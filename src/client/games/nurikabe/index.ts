@@ -5,7 +5,9 @@
  * when every island matches its number exactly, islands do not touch, the
  * sea is one connected region, and no 2×2 block is all sea. Generation on
  * big boards is solver-heavy, so puzzles are cached per display level for
- * the page lifetime (deterministic per level). Persisted level resumes
+ * the page lifetime (deterministic per level). H flashes one unfinished
+ * island's solution cells (any hint forfeits the time bonus). Persisted
+ * level resumes
  * where the player left off; P pauses (advance timer freezes via the
  * stored-remainder pattern); R restarts; [ ] switches within reached
  * levels.
@@ -16,7 +18,7 @@ import type {
   MiniGameMountOptions,
 } from '../types.ts'
 import {
-  computeScore, isWon, levelIslands, levelSize, puzzleFromSeed,
+  computeScore, isWon, levelIslands, levelSize, neighbors, puzzleFromSeed,
   type NuriPuzzle,
 } from './logic.ts'
 import { cellAt, cellCenter, logicalH, logicalW, renderNuri } from './render.ts'
@@ -47,6 +49,11 @@ function createNuriGame(host: HTMLElement, options?: MiniGameMountOptions): Mini
   let advanceAt = 0
   let advanceRemaining = 0
   let lastScoreLevel = -1
+  /** Hint overlay: solution cells of one island, -1 timer = hidden. */
+  let hintCells: number[] = []
+  let hintTimer = 0
+  /** Any hint used this level → the time bonus is forfeited on win. */
+  let hintUsed = false
   const particles = createParticles()
 
   /** Page-lifetime puzzle cache: each display level generates once. */
@@ -86,6 +93,9 @@ function createNuriGame(host: HTMLElement, options?: MiniGameMountOptions): Mini
     shownSec = -1
     elapsed = '0:00'
     winText = null
+    hintCells = []
+    hintTimer = 0
+    hintUsed = false
     refit(puzzle.size)
     loop.markDirty()
   }
@@ -106,7 +116,8 @@ function createNuriGame(host: HTMLElement, options?: MiniGameMountOptions): Mini
     winText = '第 ' + (level + 1) + ' 关完成 · ' + elapsed
     if (level !== lastScoreLevel) {
       lastScoreLevel = level
-      options?.onScore?.(computeScore(level + 1, elapsedSecs))
+      // A hint forfeits the time bonus — the base score stands.
+      options?.onScore?.(computeScore(level + 1, hintUsed ? Infinity : elapsedSecs))
     }
     const center = cellCenter(puzzle.size, Math.floor((puzzle.size * puzzle.size) / 2))
     particles.burst(center.x, center.y, THEME.gold, 20, 170)
@@ -148,6 +159,48 @@ function createNuriGame(host: HTMLElement, options?: MiniGameMountOptions): Mini
     } else if (event.code === 'KeyP') {
       event.preventDefault()
       togglePause()
+    } else if (event.code === 'KeyH') {
+      // Hint: flash one unfinished island's solution cells for 2.5s. Any hint
+      // this level forfeits the time bonus (base score stands).
+      if (!running || solved) return
+      event.preventDefault()
+      const size = puzzle.size
+      let target = -1
+      for (const [anchor, want] of puzzle.numbers) {
+        // Current visible island: white region around the anchor (player view).
+        const seen = new Set<number>([anchor])
+        const stack = [anchor]
+        while (stack.length > 0) {
+          const cur = stack.pop()!
+          for (const n of neighbors(size, cur)) {
+            // Visible island: not shaded, and no foreign anchor joins in.
+            if (!seen.has(n) && !blacks.has(n) && !puzzle.numbers.has(n)) {
+              seen.add(n)
+              stack.push(n)
+            }
+          }
+        }
+        if (seen.size !== want) { target = anchor; break }
+      }
+      if (target === -1) return
+      // Solution island: white region around the anchor in puzzle.whites.
+      const cells: number[] = []
+      const seen = new Set<number>([target])
+      const stack = [target]
+      while (stack.length > 0) {
+        const cur = stack.pop()!
+        cells.push(cur)
+        for (const n of neighbors(size, cur)) {
+          if (!seen.has(n) && puzzle.whites[n] === true) {
+            seen.add(n)
+            stack.push(n)
+          }
+        }
+      }
+      hintCells = cells
+      hintTimer = 2.5
+      hintUsed = true
+      loop.markDirty()
     } else if (event.code === 'BracketLeft' || event.code === 'BracketRight') {
       event.preventDefault()
       clearTimeout(advanceTimer)
@@ -183,9 +236,17 @@ function createNuriGame(host: HTMLElement, options?: MiniGameMountOptions): Mini
         loop.markDirty()
       }
     }
+    if (hintTimer > 0) {
+      hintTimer -= f.dt
+      if (hintTimer <= 0) {
+        hintTimer = 0
+        hintCells = []
+      }
+      loop.markDirty()
+    }
     const animating = particles.size() > 0
-    if (f.render || animating) {
-      renderNuri(ctx, puzzle, blacks, cursor, false, winText)
+    if (f.render || animating || hintTimer > 0) {
+      renderNuri(ctx, puzzle, blacks, cursor, hintTimer > 0 ? hintCells : [], false, winText)
       particles.tick(ctx, f.dt * 1000)
       if (animating) loop.markDirty()
     }
@@ -200,7 +261,7 @@ function createNuriGame(host: HTMLElement, options?: MiniGameMountOptions): Mini
       advanceRemaining = Math.max(0, advanceAt - performance.now())
     }
     loop.pause()
-    renderNuri(ctx, puzzle, blacks, cursor, true, winText)
+    renderNuri(ctx, puzzle, blacks, cursor, [], true, winText)
   }
   const resume = (): void => {
     if (running) return
@@ -244,6 +305,6 @@ export const nurikabeGame: MiniGameDefinition = {
   title: '数回 Nurikabe',
   icon: '🏝️',
   description: '把非数字格涂黑成海：每座白岛大小等于岛上数字，岛与岛不相邻，海全连通且无 2×2 黑块。',
-  controls: ['点击 / 方向键 + 空格：涂黑或还原', '数字格是岛锚点（白）', 'R：重开本关 · [ ]：切换关卡 · P：暂停'],
+  controls: ['点击 / 方向键 + 空格：涂黑或还原', 'H：提示一座岛（弃时间奖励）', 'R：重开本关 · [ ]：切换关卡 · P：暂停'],
   create: createNuriGame,
 }

@@ -54,12 +54,14 @@ export function cellCenter(size: number, cellIdx: number): { x: number; y: numbe
  * Draw one frame.
  * @param blacks - player-shaded cells.
  * @param cursor - focused cell, or -1 to hide the ring.
+ * @param hintCells - hint overlay: solution cells of one island (accent
+ * outline); empty while no hint is flashing.
  * @param paused - show the pause overlay.
  * @param winText - level-clear overlay subtitle, or null while playing.
  */
 export function renderNuri(
   ctx: CanvasRenderingContext2D, puzzle: NuriPuzzle, blacks: ReadonlySet<number>,
-  cursor: number, paused: boolean, winText: string | null,
+  cursor: number, hintCells: readonly number[], paused: boolean, winText: string | null,
 ): void {
   const size = puzzle.size
   const w = logicalW(size)
@@ -71,6 +73,7 @@ export function renderNuri(
   hudPair(ctx, GAP / 2, 21, '已涂 ', String(blacks.size))
   hudPair(ctx, w - GAP / 2, 21, '规则', '岛=数', 'right')
 
+  const hintSet = new Set(hintCells)
   ctx.font = '700 ' + Math.floor(cell * 0.42) + 'px system-ui, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -94,6 +97,14 @@ export function renderNuri(
       if (cursor === cellIdx) glow(ctx, THEME.text, 8)
       ctx.stroke()
       noGlow(ctx)
+      if (hintSet.has(cellIdx)) {
+        glow(ctx, THEME.gold, 10)
+        ctx.strokeStyle = THEME.gold
+        ctx.lineWidth = 2.5
+        roundRectPath(ctx, x + 3, y + 3, cell - 6, cell - 6, 6)
+        ctx.stroke()
+        noGlow(ctx)
+      }
       if (number !== undefined) {
         ctx.fillStyle = THEME.text
         ctx.fillText(String(number), x + cell / 2, y + cell / 2 + 1)

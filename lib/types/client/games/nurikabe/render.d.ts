@@ -28,7 +28,9 @@ export declare function cellCenter(size: number, cellIdx: number): {
  * Draw one frame.
  * @param blacks - player-shaded cells.
  * @param cursor - focused cell, or -1 to hide the ring.
+ * @param hintCells - hint overlay: solution cells of one island (accent
+ * outline); empty while no hint is flashing.
  * @param paused - show the pause overlay.
  * @param winText - level-clear overlay subtitle, or null while playing.
  */
-export declare function renderNuri(ctx: CanvasRenderingContext2D, puzzle: NuriPuzzle, blacks: ReadonlySet<number>, cursor: number, paused: boolean, winText: string | null): void;
+export declare function renderNuri(ctx: CanvasRenderingContext2D, puzzle: NuriPuzzle, blacks: ReadonlySet<number>, cursor: number, hintCells: readonly number[], paused: boolean, winText: string | null): void;
