@@ -217,6 +217,10 @@ import { dungeonGame } from './dungeon/index.ts'
 import { galconGame } from './galcon/index.ts'
 import { matchstickGame } from './matchstick/index.ts'
 import { detectiveGame } from './detective/index.ts'
+import { davinciGame } from './davinci/index.ts'
+import { vennpuzzleGame } from './vennpuzzle/index.ts'
+import { symmetryGame } from './symmetry/index.ts'
+import { magnetsGame } from './magnets/index.ts'
 import { masyuGame } from './masyu/index.ts'
 import { blackjackGame } from './blackjack/index.ts'
 import { flooditGame } from './floodit/index.ts'
@@ -297,6 +301,7 @@ export function registerBuiltinGames(): void {
     chainrxnGame, vacuumGame, stealthGame, balloonbankGame,
     cutropeGame, patterniqGame, idlecraftGame,
     dungeonGame, galconGame, matchstickGame, detectiveGame,
+    davinciGame, vennpuzzleGame, symmetryGame, magnetsGame,
   ]) {
     if (getGame(game.id) === undefined) registerGame(game)
   }
