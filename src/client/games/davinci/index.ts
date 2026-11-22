@@ -126,17 +126,20 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
 
   const onPointerDown = (event: PointerEvent): void => {
     event.preventDefault()
-    if (!running || paused) return
-    if (state.phase !== 'playing' && state.phase !== 'roundOver') return
+    if (!running) return
     const rect = canvas.getBoundingClientRect()
     const x = ((event.clientX - rect.left) / rect.width) * W
     const y = ((event.clientY - rect.top) / rect.height) * H
     const region = hitTest(x, y, { state, picking, reveal, aiThinking: false, paused: false })
     if (region === null) return
+    // 说明按钮：任何阶段/暂停中都可切换（含 matchOver 终局界面）。
     if (region.kind === 'help') {
       helpOpen = !helpOpen
       loop.markDirty()
-    } else if (region.kind === 'next') {
+      return
+    }
+    if (paused || state.phase !== 'playing' && state.phase !== 'roundOver') return
+    if (region.kind === 'next') {
       act(() => { startNextRound(state) })
     } else if (region.kind === 'pile') {
       act(() => { playerDraw(state) })
