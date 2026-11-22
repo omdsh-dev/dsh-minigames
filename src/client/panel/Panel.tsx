@@ -128,7 +128,10 @@ export function MiniGamePanel(): ReactNode {
   const [width, setWidth] = useState(() => {
     const saved = loadStr(LS_WIDTH, null)
     const fallback = Math.min(Math.round(window.innerWidth / 2), 640)
-    return saved === null ? fallback : clampPanelWidth(Number(saved) || fallback, window.innerWidth)
+    if (saved === null) return fallback
+    // 棘轮修复：视口压缩期曾把缩水值永久写入（见 onResize），大屏打开时不低于
+    // 默认宽度——用户主动拖窄的偏好下次拖一下即可，不该被历史压缩值困住。
+    return Math.max(clampPanelWidth(Number(saved) || fallback, window.innerWidth), clampPanelWidth(fallback, window.innerWidth))
   })
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     const saved = loadPos()
@@ -176,9 +179,9 @@ export function MiniGamePanel(): ReactNode {
         return next
       })
       setWidth(prev => {
-        const next = clampPanelWidth(prev, window.innerWidth)
-        if (next !== prev) save(LS_WIDTH, String(next))
-        return next
+        // 只做布局钳制不落盘：视口暂时变小就把宽度永久写小（棘轮 bug，
+        // 大屏恢复后仍每行两张）。用户显式拖拽才持久化（拖拽处理器内）。
+        return clampPanelWidth(prev, window.innerWidth)
       })
       setPos(prev => {
         const w = clampPanelWidth(widthRef.current, window.innerWidth)
