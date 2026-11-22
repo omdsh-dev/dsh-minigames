@@ -151,6 +151,8 @@ export function quizOptionAt(px: number, py: number): number {
 
 /** 已放置构件的可绘制视图（单元为绝对网格单元）。 */
 export interface PieceView {
+  /** 稳定色相索引（从构件盘到落位颜色一致，不随槽位洗牌漂移）。 */
+  hue: number
   kind: PieceKind
   cells: Cell[]
 }
@@ -164,6 +166,8 @@ export interface SceneView {
   wrong: PieceView[]
   /** 构件盘当前剩余的构件（已补上的从盘中移除）。 */
   palette: Piece[]
+  /** 构件盘每个构件的稳定色相索引（与 palette 平行）。 */
+  paletteHues: number[]
   /** 构件盘选中下标，-1 未选。 */
   selected: number
   /** 选择题已点选项下标，-1 未点。 */
@@ -354,7 +358,9 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView): voi
       drawPieceCells(ctx, layout, piece.kind, piece.cells, accent(i), false)
     })
     for (const p of view.wrong) drawPieceCells(ctx, layout, p.kind, p.cells, THEME.bad, true)
-    for (const p of view.placedCorrect) drawPieceCells(ctx, layout, p.kind, p.cells, THEME.good, true)
+    // 已放对的构件保留自身颜色（与构件盘一致——原先统一涂绿导致「放置的颜色
+    // 不对/分不清是哪个件」），绿光仅作为正确性提示。
+    for (const p of view.placedCorrect) drawPieceCells(ctx, layout, p.kind, p.cells, accent(p.hue), true)
 
     // 构件盘（底部圆角面板，槽位整行居中）。
     ctx.fillStyle = THEME.panel
@@ -363,6 +369,7 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView): voi
     ctx.strokeStyle = THEME.panelEdge
     ctx.stroke()
     view.palette.forEach((piece, i) => {
+      const hue = view.paletteHues[i] ?? i
       const r = paletteSlotRect(i, view.palette.length)
       roundRectPath(ctx, r.x, r.y, r.w, r.h, 8)
       ctx.fillStyle = 'rgba(226,226,238,0.05)'
@@ -371,7 +378,7 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView): voi
       ctx.strokeStyle = active ? THEME.accents[0]! : THEME.panelEdge
       ctx.lineWidth = active ? 2 : 1
       ctx.stroke()
-      drawPreview(ctx, r, piece, accent(round.targets.length + i))
+      drawPreview(ctx, r, piece, accent(hue))
       if (active) {
         ctx.font = '600 10px system-ui, sans-serif'
         ctx.textAlign = 'center'

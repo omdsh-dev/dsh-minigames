@@ -91,6 +91,8 @@ export declare function quizOptionRect(i: number): Rect;
 export declare function quizOptionAt(px: number, py: number): number;
 /** 已放置构件的可绘制视图（单元为绝对网格单元）。 */
 export interface PieceView {
+    /** 稳定色相索引（从构件盘到落位颜色一致，不随槽位洗牌漂移）。 */
+    hue: number;
     kind: PieceKind;
     cells: Cell[];
 }
@@ -103,6 +105,8 @@ export interface SceneView {
     wrong: PieceView[];
     /** 构件盘当前剩余的构件（已补上的从盘中移除）。 */
     palette: Piece[];
+    /** 构件盘每个构件的稳定色相索引（与 palette 平行）。 */
+    paletteHues: number[];
     /** 构件盘选中下标，-1 未选。 */
     selected: number;
     /** 选择题已点选项下标，-1 未点。 */

@@ -47,6 +47,8 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
   let placedCorrect: PieceView[] = []
   let wrong: PieceView[] = []
   let palette: Piece[] = []
+  /** 与 palette 平行的稳定色相（targets.length 起始避开已给构件色）。 */
+  let paletteHues: number[] = []
   let selected = -1
   let quizPicked = -1
   let steps = 0
@@ -92,9 +94,11 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
     if (round.type === 'place') {
       claimed = round.targets.map(() => false)
       palette = round.palette.slice()
+    paletteHues = palette.map((_, i) => round.targets.length + i)
     } else {
       claimed = []
       palette = []
+    paletteHues = []
     }
     placedCorrect = []
     wrong = []
@@ -175,8 +179,9 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
     if (match >= 0) {
       claimed[match] = true
       const cells = placedCells(piece, cell)
-      placedCorrect.push({ kind: piece.kind, cells })
+      placedCorrect.push({ kind: piece.kind, cells, hue: paletteHues[selected] ?? 0 })
       palette.splice(selected, 1)
+      paletteHues.splice(selected, 1)
       selected = -1
       const layout = boardLayout(round.grid)
       const last = cells[cells.length - 1]!
@@ -184,7 +189,7 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
       particles.burst(center.x, center.y, THEME.good, 10, 120)
       if (isPlaceSolved(round, claimed)) roundClear(CLEAR_MS)
     } else {
-      wrong.push({ kind: piece.kind, cells: placedCells(piece, cell) })
+      wrong.push({ kind: piece.kind, cells: placedCells(piece, cell), hue: paletteHues[selected] ?? 0 })
     }
     loop.markDirty()
   }
@@ -315,6 +320,7 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
       placedCorrect,
       wrong,
       palette,
+      paletteHues,
       selected,
       quizPicked,
       hudLevel: (level + 1) + '/' + LEVEL_COUNT + ' · 轮 ' + (roundIdx + 1) + '/' + rounds.length,
