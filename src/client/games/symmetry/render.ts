@@ -357,33 +357,6 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView, help
   const urgent = view.secondsLeft <= 30
   hudPair(ctx, 704, 26, '时间', clockText(view.secondsLeft), 'right', urgent ? THEME.bad : THEME.text)
 
-  // 说明按钮（替代常驻小字速览）。
-  const hb = HELP_BTN
-  ctx.fillStyle = THEME.panel
-  roundRectPath(ctx, hb.x, hb.y, hb.w, hb.h, 8)
-  ctx.fill()
-  ctx.strokeStyle = helpOpen ? accent(2) : THEME.panelEdge
-  ctx.lineWidth = helpOpen ? 2 : 1
-  ctx.stroke()
-  ctx.lineWidth = 1
-  ctx.textAlign = 'center'
-  ctx.font = '600 13px system-ui, sans-serif'
-  ctx.fillStyle = helpOpen ? accent(2) : THEME.textMuted
-  ctx.fillText('说明', hb.x + hb.w / 2, hb.y + 17)
-  if (helpOpen) {
-    ctx.fillStyle = 'rgba(13,13,20,0.92)'
-    roundRectPath(ctx, HELP_PANEL.x, HELP_PANEL.y, HELP_PANEL.w, HELP_PANEL.h, 10)
-    ctx.fill()
-    ctx.strokeStyle = THEME.panelEdge
-    ctx.stroke()
-    ctx.textAlign = 'left'
-    ctx.font = '600 15px system-ui, sans-serif'
-    HELP_LINES.forEach((line, i) => {
-      ctx.fillStyle = i === 0 ? accent(2) : THEME.text
-      ctx.fillText(line, HELP_PANEL.x + 14, HELP_PANEL.y + 26 + i * 24)
-    })
-  }
-
   if (view.round.type === 'place') {
     const round = view.round
     const layout = boardLayout(round.grid)
@@ -464,4 +437,32 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView, help
     ctx.fillStyle = 'rgba(158,206,106,' + (view.flash * 0.22).toFixed(3) + ')'
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
   }
+
+  // 说明按钮（替代常驻小字速览）。
+  const hb = HELP_BTN
+  ctx.fillStyle = THEME.panel
+  roundRectPath(ctx, hb.x, hb.y, hb.w, hb.h, 8)
+  ctx.fill()
+  ctx.strokeStyle = helpOpen ? accent(2) : THEME.panelEdge
+  ctx.lineWidth = helpOpen ? 2 : 1
+  ctx.stroke()
+  ctx.lineWidth = 1
+  ctx.textAlign = 'center'
+  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.fillStyle = helpOpen ? accent(2) : THEME.textMuted
+  ctx.fillText('说明', hb.x + hb.w / 2, hb.y + 17)
+  if (helpOpen) {
+    ctx.fillStyle = 'rgba(13,13,20,0.92)'
+    roundRectPath(ctx, HELP_PANEL.x, HELP_PANEL.y, HELP_PANEL.w, HELP_PANEL.h, 10)
+    ctx.fill()
+    ctx.strokeStyle = THEME.panelEdge
+    ctx.stroke()
+    ctx.textAlign = 'left'
+    ctx.font = '600 15px system-ui, sans-serif'
+    HELP_LINES.forEach((line, i) => {
+      ctx.fillStyle = i === 0 ? accent(2) : THEME.text
+      ctx.fillText(line, HELP_PANEL.x + 14, HELP_PANEL.y + 26 + i * 24)
+    })
+  }
+
 }
