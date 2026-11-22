@@ -338,7 +338,7 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
       secondsLeft,
       flash,
     }
-    renderScene(ctx, view)
+    renderScene(ctx, view, helpOpen)
     particles.tick(ctx, dtMs)
     const overlay = overlayText()
     if (overlay !== null) drawOverlay(ctx, LOGICAL_W, LOGICAL_H, overlay.title, overlay.subtitle)
