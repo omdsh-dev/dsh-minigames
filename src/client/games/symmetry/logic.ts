@@ -459,6 +459,7 @@ export function isPlaceSolved(round: PlaceRound, claimed: boolean[]): boolean {
  */
 export function computeScore(level: number, steps: number, seconds: number): number {
   const base = 380 + level * 120
-  const timeBonus = Math.max(0, 240 - Math.max(0, seconds))
+  // 用时是浮点秒（帧累积），原样参与加减出现 671.6247… 这类尾差——取整。
+  const timeBonus = Math.max(0, Math.round(240 - Math.max(0, seconds)))
   return Math.max(100, base + timeBonus - steps * 6)
 }
