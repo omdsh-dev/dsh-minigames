@@ -25,8 +25,17 @@ export declare const PILE_RECT: {
     w: number;
     h: number;
 };
+/** 说明按钮矩形（右下角）。 */
+export declare const HELP_BTN: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+};
 /** 命中区域：牌堆 / 对方牌位 / 插入槽 / 数值按钮 / 下一局。 */
 export type HitRegion = {
+    kind: 'help';
+} | {
     kind: 'pile';
 } | {
     kind: 'aiCard';
@@ -73,6 +82,6 @@ export declare function hitTest(x: number, y: number, view: DavinciView): HitReg
  * @param ctx - 画布上下文（逻辑坐标系）。
  * @param view - 渲染状态。
  */
-export declare function renderDavinci(ctx: CanvasRenderingContext2D, view: DavinciView): void;
+export declare function renderDavinci(ctx: CanvasRenderingContext2D, helpOpen: boolean, view: DavinciView): void;
 /** 排序键重导出（渲染层插入箭头校验用）。 */
 export { sortKey };

@@ -41,11 +41,25 @@ const PICK_Y = 410
 /** 一局结束面板与「下一局」按钮。 */
 const NEXT_PANEL = { x: 230, y: 180, w: 320, h: 118 }
 const NEXT_RECT = { x: 290, y: 244, w: 200, h: 42 }
-/** 底部常驻速览基线 y。 */
+/** 说明按钮矩形（右下角）。 */
+export const HELP_BTN = { x: W - 76, y: H - 34, w: 60, h: 26 }
+/** 帮助面板矩形（底部居中弹层）。 */
+const HELP_PANEL = { x: W / 2 - 260, y: H - 176, w: 520, h: 150 }
+/** 帮助面板文案（16px 大字）。 */
+const HELP_LINES = [
+  '玩法速览',
+  '· 点牌堆摸牌 → 点亮色箭头插入 → 点对方牌位猜数值',
+  '· 猜对：牌翻开，可继续猜；猜错：自己翻开一张最接近的牌',
+  '· 手牌按数值升序（同值白前黑后）；只猜数值不猜颜色',
+  '· 空格结束回合 · R 重开 · P 暂停 · 再点「说明」关闭',
+]
+
+/** 底部常驻速览基线 y（已改说明按钮，保留坐标备用）。 */
 const HINT_Y = 566
 
 /** 命中区域：牌堆 / 对方牌位 / 插入槽 / 数值按钮 / 下一局。 */
 export type HitRegion =
+  | { kind: 'help' }
   | { kind: 'pile' }
   | { kind: 'aiCard'; index: number }
   | { kind: 'insert'; index: number }
@@ -196,6 +210,7 @@ function drawPicker(ctx: CanvasRenderingContext2D, index: number): void {
  * @returns 命中区域或 null。
  */
 export function hitTest(x: number, y: number, view: DavinciView): HitRegion | null {
+  if (x >= HELP_BTN.x && x <= HELP_BTN.x + HELP_BTN.w && y >= HELP_BTN.y && y <= HELP_BTN.y + HELP_BTN.h) return { kind: 'help' }
   const s = view.state
   if (s.phase === 'matchOver') return null
   if (s.phase === 'roundOver') {
@@ -247,7 +262,7 @@ export function hitTest(x: number, y: number, view: DavinciView): HitRegion | nu
  * @param ctx - 画布上下文（逻辑坐标系）。
  * @param view - 渲染状态。
  */
-export function renderDavinci(ctx: CanvasRenderingContext2D, view: DavinciView): void {
+export function renderDavinci(ctx: CanvasRenderingContext2D, helpOpen: boolean, view: DavinciView): void {
   const s = view.state
   drawBackground(ctx, W, H)
   // 局分 HUD（左）与牌堆余量（右锚，动态宽度安全）。
@@ -324,11 +339,34 @@ export function renderDavinci(ctx: CanvasRenderingContext2D, view: DavinciView):
     }
   }
 
-  // 底部常驻速览。
+  // 说明按钮（替代原 12px 常驻速览——字太小且常驻拥挤；点击弹出 16px 帮助面板）。
+  const hb = HELP_BTN
+  ctx.fillStyle = THEME.panel
+  roundRectPath(ctx, hb.x, hb.y, hb.w, hb.h, 8)
+  ctx.fill()
+  ctx.strokeStyle = helpOpen ? accent(2) : THEME.panelEdge
+  ctx.lineWidth = helpOpen ? 2 : 1
+  ctx.stroke()
+  ctx.lineWidth = 1
   ctx.textAlign = 'center'
-  ctx.font = '600 12px system-ui, sans-serif'
-  ctx.fillStyle = THEME.textMuted
-  ctx.fillText('点牌堆摸牌 · 点对方牌位猜数值 · 空格结束回合 · R 重开 · P 暂停', W / 2, HINT_Y)
+  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.fillStyle = helpOpen ? accent(2) : THEME.textMuted
+  ctx.fillText('说明', hb.x + hb.w / 2, hb.y + 17)
+  if (helpOpen) {
+    // 帮助面板：半透明底 + 16px 大字玩法速览（含易误解点）。
+    ctx.fillStyle = 'rgba(13,13,20,0.92)'
+    roundRectPath(ctx, HELP_PANEL.x, HELP_PANEL.y, HELP_PANEL.w, HELP_PANEL.h, 10)
+    ctx.fill()
+    ctx.strokeStyle = THEME.panelEdge
+    ctx.stroke()
+    ctx.textAlign = 'left'
+    ctx.font = '600 16px system-ui, sans-serif'
+    ctx.fillStyle = THEME.text
+    HELP_LINES.forEach((line, i) => {
+      ctx.fillStyle = i === 0 ? accent(2) : THEME.text
+      ctx.fillText(line, HELP_PANEL.x + 16, HELP_PANEL.y + 30 + i * 26)
+    })
+  }
 
   if (s.phase === 'roundOver') {
     ctx.fillStyle = 'rgba(13,13,20,0.72)'

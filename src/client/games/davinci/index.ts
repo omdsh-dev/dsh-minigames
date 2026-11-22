@@ -37,6 +37,8 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
   let picking: number | null = null
   let running = false
   let paused = false
+  /** 说明面板开关（替代常驻小字速览，点击「说明」切换）。 */
+  let helpOpen = false
   let lastScore = -1
   let lastLogLen = 0
   let reveal = 1
@@ -95,7 +97,7 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
     if (!running) return
     const animating = tickAnimations(f.dt)
     if (f.render || animating) {
-      renderDavinci(ctx, { state, picking, reveal, aiThinking: aiTimer > 0, paused: false })
+      renderDavinci(ctx, helpOpen, { state, picking, reveal, aiThinking: aiTimer > 0, paused: false })
       particles.tick(ctx, f.dt * 1000)
       if (animating) loop.markDirty()
     }
@@ -131,7 +133,10 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
     const y = ((event.clientY - rect.top) / rect.height) * H
     const region = hitTest(x, y, { state, picking, reveal, aiThinking: false, paused: false })
     if (region === null) return
-    if (region.kind === 'next') {
+    if (region.kind === 'help') {
+      helpOpen = !helpOpen
+      loop.markDirty()
+    } else if (region.kind === 'next') {
       act(() => { startNextRound(state) })
     } else if (region.kind === 'pile') {
       act(() => { playerDraw(state) })
@@ -163,7 +168,7 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
     paused = false
     reportScore()
     loop.markDirty()
-    renderDavinci(ctx, { state, picking, reveal: 1, aiThinking: false, paused: false })
+    renderDavinci(ctx, helpOpen, { state, picking, reveal: 1, aiThinking: false, paused: false })
   }
 
   const onKeyDown = (event: KeyboardEvent): void => {
@@ -200,7 +205,7 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
     paused = true
     running = false
     loop.pause()
-    renderDavinci(ctx, { state, picking, reveal, aiThinking: false, paused: true })
+    renderDavinci(ctx, helpOpen, { state, picking, reveal, aiThinking: false, paused: true })
   }
   const resume = (): void => {
     if (running) return
@@ -220,7 +225,7 @@ function createDavinciGame(host: HTMLElement, options?: MiniGameMountOptions): M
   running = true
   reportScore()
   loop.start()
-  renderDavinci(ctx, { state, picking, reveal: 1, aiThinking: false, paused: false })
+  renderDavinci(ctx, helpOpen, { state, picking, reveal: 1, aiThinking: false, paused: false })
 
   return {
     start: resume,
