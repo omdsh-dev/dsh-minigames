@@ -239,7 +239,9 @@ function drawPieceCells(
     ctx.lineWidth = s * 0.2
     ctx.beginPath()
     ctx.moveTo(a.x, a.y)
-    ctx.quadraticCurveTo(ctl.x * 2 - (a.x + b.x) / 2, ctl.y * 2 - (a.y + b.y) / 2, b.x, b.y)
+    // 控制点取拐角本身：曲线向拐角鼓出（真正的 L/拐杖弯折）——原实现把控制点
+    // 反射到 (a,b) 中点的对面，导致弧线背离拐角弯曲（2/5 关拐杖方向反了的根因）。
+    ctx.quadraticCurveTo(ctl.x, ctl.y, b.x, b.y)
     ctx.stroke()
   }
   noGlow(ctx)
