@@ -227,7 +227,10 @@ function drawPieceCells(
     let ends: Cell[] = []
     for (const cand of sorted) {
       const others = sorted.filter((c) => c !== cand)
-      if (others.every((c) => Math.abs(c.x - cand.x) <= 1 && Math.abs(c.y - cand.y) <= 1)) {
+      // 真拐角 = 与其他所有格曼哈顿距离恰为 1（正交相邻两端）。原判据
+      // 「≤1 切比雪夫」会把 ┐ 形的一个端点误当拐角（端点到对角端也是 ≤1），
+      // 弧就朝端点鼓——2/5 拐杖方向仍反的根因。
+      if (others.length > 0 && others.every((c) => Math.abs(c.x - cand.x) + Math.abs(c.y - cand.y) === 1)) {
         corner = cand
         ends = others
         break
