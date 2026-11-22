@@ -334,7 +334,21 @@ function clockText(secondsLeft: number): string {
  * @param ctx - 画布上下文。
  * @param view - 本帧视图。
  */
-export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView): void {
+/** 说明按钮矩形（右下角）。 */
+export const HELP_BTN = { x: LOGICAL_W - 76, y: LOGICAL_H - 34, w: 60, h: 26 }
+/** 帮助面板矩形。 */
+const HELP_PANEL = { x: LOGICAL_W / 2 - 280, y: LOGICAL_H - 216, w: 560, h: 196 }
+/** 帮助面板文案。 */
+const HELP_LINES = [
+  '玩法速览',
+  '· 点构件盘选中，再点缺失侧网格放置；完全镜像才对位锁定',
+  '· 错放红显：右键或再次点击取回重放；轴上已给构件无需补',
+  '· 第 4-5 关对称轴转为 45° 斜线，并混入对称轴计数选择题',
+  '· 每关限时 4 分钟且计步：步少时短分高；超时判负可 R 重开',
+  '· 过关自动进下一关，进度自动保存 · P 暂停 · 再点「说明」关闭',
+]
+
+export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView, helpOpen = false): void {
   drawBackground(ctx, LOGICAL_W, LOGICAL_H)
 
   // HUD 行（y=26 基线）：左侧关卡/轮次，右侧步数与限时（均右锚定宽）。
@@ -343,11 +357,32 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView): voi
   const urgent = view.secondsLeft <= 30
   hudPair(ctx, 704, 26, '时间', clockText(view.secondsLeft), 'right', urgent ? THEME.bad : THEME.text)
 
-  // 常驻速览（一行，y=48 基线）。
-  ctx.font = '500 12px system-ui, sans-serif'
+  // 说明按钮（替代常驻小字速览）。
+  const hb = HELP_BTN
+  ctx.fillStyle = THEME.panel
+  roundRectPath(ctx, hb.x, hb.y, hb.w, hb.h, 8)
+  ctx.fill()
+  ctx.strokeStyle = helpOpen ? accent(2) : THEME.panelEdge
+  ctx.lineWidth = helpOpen ? 2 : 1
+  ctx.stroke()
+  ctx.lineWidth = 1
   ctx.textAlign = 'center'
-  ctx.fillStyle = THEME.textMuted
-  ctx.fillText('拖构件到缺少的一半补全镜像 · 右键取回错件 · R 重开本关 · P 暂停', LOGICAL_W / 2, 48)
+  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.fillStyle = helpOpen ? accent(2) : THEME.textMuted
+  ctx.fillText('说明', hb.x + hb.w / 2, hb.y + 17)
+  if (helpOpen) {
+    ctx.fillStyle = 'rgba(13,13,20,0.92)'
+    roundRectPath(ctx, HELP_PANEL.x, HELP_PANEL.y, HELP_PANEL.w, HELP_PANEL.h, 10)
+    ctx.fill()
+    ctx.strokeStyle = THEME.panelEdge
+    ctx.stroke()
+    ctx.textAlign = 'left'
+    ctx.font = '600 15px system-ui, sans-serif'
+    HELP_LINES.forEach((line, i) => {
+      ctx.fillStyle = i === 0 ? accent(2) : THEME.text
+      ctx.fillText(line, HELP_PANEL.x + 14, HELP_PANEL.y + 26 + i * 24)
+    })
+  }
 
   if (view.round.type === 'place') {
     const round = view.round

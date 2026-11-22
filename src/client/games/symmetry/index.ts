@@ -17,7 +17,7 @@ import {
   type Cell, type Piece, type Round,
 } from './logic.ts'
 import {
-  boardLayout, cellCenter, cellFromPoint, LOGICAL_H, LOGICAL_W, paletteSlotAt,
+  boardLayout, cellCenter, cellFromPoint, HELP_BTN, LOGICAL_H, LOGICAL_W, paletteSlotAt,
   quizOptionAt, renderScene, type PieceView, type SceneView,
 } from './render.ts'
 import { fitCanvas } from '../canvas-fit.ts'
@@ -50,6 +50,8 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
   /** 与 palette 平行的稳定色相（targets.length 起始避开已给构件色）。 */
   let paletteHues: number[] = []
   let selected = -1
+  /** 说明面板开关。 */
+  let helpOpen = false
   let quizPicked = -1
   let steps = 0
   let secondsLeft = LEVEL_SECONDS
@@ -94,7 +96,9 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
     if (round.type === 'place') {
       claimed = round.targets.map(() => false)
       palette = round.palette.slice()
-    paletteHues = palette.map((_, i) => round.targets.length + i)
+    // 镜像件与其原件同色：palette 里是 targets 的引用，hue=其在 targets 中的
+    // 索引——与 given[i] 用 accent(i) 完全对应（红件的镜像也是红件）。
+    paletteHues = palette.map(p => round.targets.indexOf(p))
     } else {
       claimed = []
       palette = []
@@ -238,8 +242,14 @@ function createSymmetryGame(host: HTMLElement, options?: MiniGameMountOptions): 
 
   const onMouseDown = (event: MouseEvent): void => {
     focusGameHost(host)
-    if (paused || phase === 'clear') return
     const { x, y } = toLogical(event)
+    // 说明按钮：任何阶段/暂停中都可开合。
+    if (x >= HELP_BTN.x && x <= HELP_BTN.x + HELP_BTN.w && y >= HELP_BTN.y && y <= HELP_BTN.y + HELP_BTN.h) {
+      helpOpen = !helpOpen
+      loop.markDirty()
+      return
+    }
+    if (paused || phase === 'clear') return
     if (phase === 'levelDone') {
       startLevel(level + 1)
       return
@@ -367,11 +377,8 @@ export const symmetryGame: MiniGameDefinition = {
   icon: '🦋',
   description: '一半图形告诉你全部——沿对称轴补全另一半，角度和弧线都要严丝合缝。',
   controls: [
-    '点击构件盘选中，再点击缺失一侧的网格放置；位置与形状完全镜像才算对位（绿色锁定）。',
-    '错放的构件红显：右键或再次点击它取回，重新放置；轴上已给构件无需补。',
-    '第 4-5 关对称轴转为 45° 斜线，并混入"图形有几条对称轴"选择题（点选项作答，答错可再答）。',
-    '每关限时 4 分钟且计步：步数越少、用时越短得分越高；时间到判负，可按 R 重开本关。',
-    '快捷键：R 重开本关 · P 暂停/继续；过关自动进入下一关，进度自动保存。',
+    '点构件盘选中 → 点缺失侧网格放置，完全镜像才锁定——完整规则点游戏内右下角「说明」',
+    'R：重开本关 · P：暂停',
   ],
   create: createSymmetryGame,
 }

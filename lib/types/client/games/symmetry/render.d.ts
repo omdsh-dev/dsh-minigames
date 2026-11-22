@@ -126,4 +126,11 @@ export interface SceneView {
  * @param ctx - 画布上下文。
  * @param view - 本帧视图。
  */
-export declare function renderScene(ctx: CanvasRenderingContext2D, view: SceneView): void;
+/** 说明按钮矩形（右下角）。 */
+export declare const HELP_BTN: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+};
+export declare function renderScene(ctx: CanvasRenderingContext2D, view: SceneView, helpOpen?: boolean): void;
