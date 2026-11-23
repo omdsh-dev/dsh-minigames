@@ -34,6 +34,13 @@ function createBinPackGame(host: HTMLElement, options?: MiniGameMountOptions): M
   let winText: string | null = null
   let helpOpen = false
   let hoveredBin = -1
+/** 拖拽状态：物品下标（全局 items 索引）、起点逻辑坐标（判点击/拖动）、当前拖点。 */
+let dragItem = -1
+let dragFromBin = -1
+let dragStartX = 0
+let dragStartY = 0
+let dragX = 0
+let dragY = 0
   let advanceTimer = 0
   let advanceRemaining = 0
   let advanceAt = 0
@@ -141,14 +148,66 @@ function createBinPackGame(host: HTMLElement, options?: MiniGameMountOptions): M
   }
 
   const onMouseMove = (event: MouseEvent): void => {
-    if (!running || won) return
+    if (!running) return
     const p = toLogical(event)
+    if (dragItem >= 0) {
+      dragX = p.x
+      dragY = p.y
+      loop.markDirty()
+      return
+    }
+    if (won) return
     const layout = computeLayout(state)
     const bin = binAt(layout, p.x, p.y)
     if (bin !== hoveredBin) {
       hoveredBin = bin
       loop.markDirty()
     }
+  }
+
+  const onMouseUp = (event: MouseEvent): void => {
+    if (dragItem < 0) return
+    const p = toLogical(event)
+    const layout = computeLayout(state)
+    const moved = Math.hypot(p.x - dragStartX, p.y - dragStartY)
+    const item = dragItem
+    const fromBin = dragFromBin
+    dragItem = -1
+    dragFromBin = -1
+    if (!running || won) { loop.markDirty(); return }
+    // 点击（位移 <4px）：保持原点选语义。
+    if (moved < 4) {
+      if (fromBin < 0) {
+        state.selected = state.selected === item ? -1 : item
+      } else if (state.selected === item) {
+        takeOut(state, item)
+        won = false
+      } else {
+        state.selected = item
+      }
+      loop.markDirty()
+      return
+    }
+    // 拖动放置：目标箱合法即放入（placeItem 自带容量校验）。
+    const bin = binAt(layout, p.x, p.y)
+    if (bin >= 0) {
+      if (fromBin >= 0 && fromBin !== bin) {
+        takeOut(state, item)
+        placeItem(state, item, bin)
+        state.selected = -1
+        won = false
+        checkWin()
+      } else if (fromBin < 0) {
+        placeItem(state, item, bin)
+        state.selected = -1
+        checkWin()
+      }
+    } else if (fromBin >= 0) {
+      // 拖出箱外 = 取出重放。
+      takeOut(state, item)
+      won = false
+    }
+    loop.markDirty()
   }
 
   const onKeyDown = (event: KeyboardEvent): void => {
@@ -169,7 +228,7 @@ function createBinPackGame(host: HTMLElement, options?: MiniGameMountOptions): M
   const loop = createFrameLoop(f => {
     const animating = particles.size() > 0
     if (f.render || animating) {
-      renderBinPack(ctx, state, { paused: !running && !won, won, winText, hoveredBin, helpOpen }, particles, f.dt * 1000)
+      renderBinPack(ctx, state, { paused: !running && !won, won, winText, hoveredBin, helpOpen, dragItem, dragX, dragY }, particles, f.dt * 1000)
       if (animating) loop.markDirty()
     }
   }, { mode: 'dirty' })
@@ -183,7 +242,7 @@ function createBinPackGame(host: HTMLElement, options?: MiniGameMountOptions): M
       advanceRemaining = Math.max(0, advanceAt - performance.now())
     }
     loop.pause()
-    renderBinPack(ctx, state, { paused: true, won, winText, hoveredBin, helpOpen })
+    renderBinPack(ctx, state, { paused: true, won, winText, hoveredBin, helpOpen, dragItem: -1, dragX: 0, dragY: 0 })
   }
   const resume = (): void => {
     if (running) return
@@ -201,6 +260,7 @@ function createBinPackGame(host: HTMLElement, options?: MiniGameMountOptions): M
   }
 
   canvas.addEventListener('mousedown', onMouseDown)
+  canvas.addEventListener('mouseup', onMouseUp)
   canvas.addEventListener('mousemove', onMouseMove)
   window.addEventListener('keydown', onKeyDown)
   focusGameHost(host)
@@ -217,6 +277,7 @@ function createBinPackGame(host: HTMLElement, options?: MiniGameMountOptions): M
       clearTimeout(advanceTimer)
       advanceTimer = 0
       canvas.removeEventListener('mousedown', onMouseDown)
+  canvas.removeEventListener('mouseup', onMouseUp)
       canvas.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('keydown', onKeyDown)
       fit.dispose()
@@ -230,7 +291,7 @@ export const binpackGame: MiniGameDefinition = {
   icon: '🧳',
   description: '一堆箱子几个货柜？塞得进一个就别开第二个——空间感与贪心的较量。',
   controls: [
-    '点物品再点箱放入；点箱内选中物品取出',
+    '拖动物品到箱内放入（或点选物品→点箱）；拖出箱外/再点选中件 = 取出',
     'R：重开本关 · P：暂停 · H / 右下角：说明',
   ],
   create: createBinPackGame,

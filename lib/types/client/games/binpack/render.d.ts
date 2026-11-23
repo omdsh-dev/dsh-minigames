@@ -53,6 +53,10 @@ export interface RenderOptions {
     hoveredBin: number;
     /** 说明面板是否展开。 */
     helpOpen: boolean;
+    /** 拖拽中的物品下标（-1 无）与当前拖点（渲染顶层幽灵块）。 */
+    dragItem: number;
+    dragX: number;
+    dragY: number;
 }
 /**
  * 整幅渲染：背景 → HUD → 待装区 → 箱区 → 底部提示 → 粒子 → 暂停 /

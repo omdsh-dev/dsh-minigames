@@ -178,6 +178,10 @@ export interface RenderOptions {
   hoveredBin: number
   /** 说明面板是否展开。 */
   helpOpen: boolean
+  /** 拖拽中的物品下标（-1 无）与当前拖点（渲染顶层幽灵块）。 */
+  dragItem: number
+  dragX: number
+  dragY: number
 }
 
 /**
@@ -228,6 +232,12 @@ export function renderBinPack(
     drawOverlay(ctx, LOGICAL_W, LOGICAL_H, '过关', opts.winText ?? '装箱达成', THEME.good)
   }
 
+  // 拖拽幽灵块：跟随光标，最上层（仅低于帮助面板）。
+  if (opts.dragItem >= 0 && !opts.paused) {
+    const size = state.level.items[opts.dragItem]!
+    const w = size * 14 + 14
+    drawItemBlock(ctx, { x: opts.dragX - w / 2, y: opts.dragY - 14, w, h: 28 }, size, accent(opts.dragItem), true)
+  }
   drawHelpButton(ctx, layout.helpButton, opts.helpOpen)
   if (opts.helpOpen) drawHelpPanel(ctx)
 }
