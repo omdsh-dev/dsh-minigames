@@ -119,18 +119,24 @@ let dragY = 0
     if (!running || won) return
     const trayItem = trayItemAt(layout, state, p.x, p.y)
     if (trayItem >= 0) {
-      state.selected = state.selected === trayItem ? -1 : trayItem
+      // 拖拽起点：mouseup 位移 <4px 走点击选中，否则按放置处理。
+      dragItem = trayItem
+      dragFromBin = -1
+      dragStartX = p.x
+      dragStartY = p.y
+      dragX = p.x
+      dragY = p.y
       loop.markDirty()
       return
     }
     const inBin = binItemAt(layout, state, p.x, p.y)
     if (inBin >= 0) {
-      if (state.selected === inBin) {
-        takeOut(state, inBin) // 再点一次选中物品 = 取出重放
-        won = false
-      } else {
-        state.selected = inBin
-      }
+      dragItem = inBin
+      dragFromBin = state.binOf[inBin] ?? -1
+      dragStartX = p.x
+      dragStartY = p.y
+      dragX = p.x
+      dragY = p.y
       loop.markDirty()
       return
     }
