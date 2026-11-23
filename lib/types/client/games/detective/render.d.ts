@@ -8,6 +8,13 @@ import { type NoteMark } from './logic.ts';
 export declare const LOGICAL_W = 480;
 export declare const LOGICAL_H = 660;
 export declare const HUD_H = 30;
+/** 说明按钮矩形（右上角）。 */
+export declare const HELP_BTN: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+};
 /** 渲染所需的全部游戏视图状态（index.ts 持有并传入）。 */
 export interface DetectiveView {
     pos: number;
@@ -33,6 +40,8 @@ export interface DetectiveView {
     reveal: string;
     streak: number;
     paused: boolean;
+    /** 说明面板开关。 */
+    helpOpen: boolean;
 }
 /**
  * 棋盘命中检测。

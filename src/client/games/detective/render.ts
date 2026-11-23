@@ -12,6 +12,18 @@ export const LOGICAL_H = 660
 export const HUD_H = 30
 
 // ── 布局常量（报告逐项核算用）──────────────────────────────
+/** 说明按钮矩形（右上角）。 */
+export const HELP_BTN = { x: LOGICAL_W - 76, y: HUD_H + 6, w: 60, h: 28 }
+/** 帮助面板文案（15px 大字）。 */
+const HELP_LINES = [
+  '玩法速览',
+  '· 空格掷骰（1–3 步），点击高亮房间移动',
+  '· 进房弹盘问层选嫌疑人+凶器：证人持匹配卡必亮一张（自动 × 排除）',
+  '· 证人无匹配时：盘问三要素中不在你手里的必是底牌（自动 ★ 锁定）',
+  '· 到中央大厅并原地再点它 → 指认三要素：全对胜，任一错即败，一局仅一次',
+  '· 记事板三列自动维护：✓ 在手 × 已排除 ★ 锁定 · R 换局 · P 暂停',
+]
+
 /** 中央大厅速览条：y 30..52。 */
 const QUICK_Y = 45
 /** 棋盘：3×3，格 118×84，缝 8；x0=55 居中，y0=58。 */
@@ -82,6 +94,8 @@ export interface DetectiveView {
   reveal: string
   streak: number
   paused: boolean
+  /** 说明面板开关。 */
+  helpOpen: boolean
 }
 
 /** 房间格矩形（含缝内命中）。 */
@@ -387,10 +401,19 @@ export function renderDetective(ctx: CanvasRenderingContext2D, view: DetectiveVi
   hudPair(ctx, 10, 20, '连胜 ', String(view.streak), 'left', view.streak > 0 ? THEME.gold : THEME.text)
   hudPair(ctx, LOGICAL_W - 10, 20, '房间 ', ROOMS[view.pos]!, 'right')
 
-  ctx.font = '600 11px system-ui, sans-serif'
+  // 说明按钮（替代 11px 小字速览——字太小；点击弹 15px 帮助面板）。
+  const hb = HELP_BTN
+  ctx.fillStyle = THEME.panel
+  roundRectPath(ctx, hb.x, hb.y, hb.w, hb.h, 7)
+  ctx.fill()
+  ctx.strokeStyle = view.helpOpen ? accent(2) : THEME.panelEdge
+  ctx.lineWidth = view.helpOpen ? 2 : 1
+  ctx.stroke()
+  ctx.lineWidth = 1
   ctx.textAlign = 'center'
-  ctx.fillStyle = THEME.textMuted
-  ctx.fillText('盘问：证人持匹配卡必亮一张（× 排除）；无匹配则不在你手里的要素即锁定 ★', LOGICAL_W / 2, QUICK_Y)
+  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.fillStyle = view.helpOpen ? accent(2) : THEME.textMuted
+  ctx.fillText('说明', hb.x + hb.w / 2, hb.y + 18)
 
   drawBoard(ctx, view)
   drawStatus(ctx, view)
@@ -428,5 +451,21 @@ export function renderDetective(ctx: CanvasRenderingContext2D, view: DetectiveVi
     drawOverlay(ctx, LOGICAL_W, LOGICAL_H, '指认失误', '真相：' + view.reveal + ' · 空格 / 点击再来一局', THEME.bad)
   } else if (view.paused) {
     drawOverlay(ctx, LOGICAL_W, LOGICAL_H, '已暂停', '按 P 继续', THEME.text)
+  }
+
+  // 说明面板：最上层渲染。
+  if (view.helpOpen) {
+    const hp = { x: LOGICAL_W / 2 - 230, y: 140, w: 460, h: 196 }
+    ctx.fillStyle = 'rgba(13,13,20,0.93)'
+    roundRectPath(ctx, hp.x, hp.y, hp.w, hp.h, 10)
+    ctx.fill()
+    ctx.strokeStyle = THEME.panelEdge
+    ctx.stroke()
+    ctx.textAlign = 'left'
+    ctx.font = '600 15px system-ui, sans-serif'
+    HELP_LINES.forEach((line, i) => {
+      ctx.fillStyle = i === 0 ? accent(2) : THEME.text
+      ctx.fillText(line, hp.x + 14, hp.y + 28 + i * 26)
+    })
   }
 }

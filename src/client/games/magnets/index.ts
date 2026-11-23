@@ -110,7 +110,7 @@ function createMagnetsGame(host: HTMLElement, options?: MiniGameMountOptions): M
       pausedView, winText)
   }
 
-  const onPointerDown = (event: PointerEvent): void => {
+  const onPointerDown = (event: MouseEvent): void => {
     if (!running || solved) return
     const rect = canvas.getBoundingClientRect()
     const x = ((event.clientX - rect.left) * logicalW(puzzle.size)) / rect.width
@@ -192,7 +192,7 @@ function createMagnetsGame(host: HTMLElement, options?: MiniGameMountOptions): M
     else resume()
   }
 
-  canvas.addEventListener('pointerdown', onPointerDown)
+  canvas.addEventListener('mousedown', onPointerDown)
   window.addEventListener('keydown', onKeyDown)
   focusGameHost(host)
   running = true
@@ -207,7 +207,7 @@ function createMagnetsGame(host: HTMLElement, options?: MiniGameMountOptions): M
       loop.destroy()
       clearTimeout(advanceTimer)
       advanceTimer = 0
-      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('mousedown', onPointerDown)
       window.removeEventListener('keydown', onKeyDown)
       fit.dispose()
     },

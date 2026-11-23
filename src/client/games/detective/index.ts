@@ -11,7 +11,7 @@ import {
   CENTER_ROOM, ROOMS, SUSPECTS, WEAPONS, accuse, cardName, createDetective, deriveNotes,
   moveTo, reachableRooms, rollDie, suggest, type DetectiveState,
 } from './logic.ts'
-import { renderDetective, roomAt, suggestHit, accuseHit, LOGICAL_W, LOGICAL_H, type DetectiveView } from './render.ts'
+import { renderDetective, roomAt, suggestHit, accuseHit, HELP_BTN, LOGICAL_W, LOGICAL_H, type DetectiveView } from './render.ts'
 import { fitCanvas } from '../canvas-fit.ts'
 import { focusGameHost, gameHasFocus } from '../focus.ts'
 import { accent, createParticles } from '../theme.ts'
@@ -55,6 +55,8 @@ function createDetectiveGame(host: HTMLElement, options?: MiniGameMountOptions):
   let toastMs = 0
   let streak = 0
   let paused = false
+  /** 说明面板开关。 */
+  let helpOpen = false
   let running = false
   let lastScore = -1
   const particles = createParticles()
@@ -190,7 +192,17 @@ function createDetectiveGame(host: HTMLElement, options?: MiniGameMountOptions):
   }
 
   const onMouseDown = (event: MouseEvent): void => {
-    if (!running || paused) return
+    if (!running) return
+    const rect0 = canvas.getBoundingClientRect()
+    const hx = ((event.clientX - rect0.left) * LOGICAL_W) / rect0.width
+    const hy = ((event.clientY - rect0.top) * LOGICAL_H) / rect0.height
+    // 说明按钮：任何阶段/暂停中都可开合。
+    if (hx >= HELP_BTN.x && hx <= HELP_BTN.x + HELP_BTN.w && hy >= HELP_BTN.y && hy <= HELP_BTN.y + HELP_BTN.h) {
+      helpOpen = !helpOpen
+      loop.markDirty()
+      return
+    }
+    if (paused) return
     if (status() !== 'playing') {
       restart()
       return
@@ -222,6 +234,7 @@ function createDetectiveGame(host: HTMLElement, options?: MiniGameMountOptions):
   }
 
   const view = (): DetectiveView => ({
+    helpOpen,
     pos: state.pos,
     die: state.die,
     steps: state.steps,
@@ -301,11 +314,8 @@ export const detectiveGame: MiniGameDefinition = {
   icon: '🕵',
   description: '三张底牌藏在谁手里——走访房间、盘问线索，一次指认定输赢。',
   controls: [
-    '空格掷骰（1–3 步），点击高亮房间移动；进房弹盘问层选嫌疑人+凶器，证人持匹配卡必亮一张（自动 × 排除）',
-    '证人无匹配时：盘问三要素中不在你手里的必是底牌（自动 ★ 锁定）',
-    '到中央大厅并原地再点它 → 指认三要素：全对胜，任一错即败，一局仅一次',
-    '记事板三列自动维护：✓ 在手 × 已排除 ★ 锁定 · 手牌 9 张全部不是底牌',
-    'R 换局重开 · P 暂停 · 胜/负后空格或点击再来一局',
+    '空格掷骰、点击房间移动，进房盘问收集排除——完整规则点游戏内右上角「说明」',
+    'R：换局重开 · P：暂停',
   ],
   create: createDetectiveGame,
 }
