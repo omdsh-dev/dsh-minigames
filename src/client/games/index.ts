@@ -221,6 +221,14 @@ import { davinciGame } from './davinci/index.ts'
 import { vennpuzzleGame } from './vennpuzzle/index.ts'
 import { symmetryGame } from './symmetry/index.ts'
 import { magnetsGame } from './magnets/index.ts'
+import { frogswapGame } from './frogswap/index.ts'
+import { dicegridGame } from './dicegrid/index.ts'
+import { binpackGame } from './binpack/index.ts'
+import { takesixGame } from './takesix/index.ts'
+import { trailmemoryGame } from './trailmemory/index.ts'
+import { draughtsGame } from './draughts/index.ts'
+import { planarityGame } from './planarity/index.ts'
+import { banqiGame } from './banqi/index.ts'
 import { masyuGame } from './masyu/index.ts'
 import { blackjackGame } from './blackjack/index.ts'
 import { flooditGame } from './floodit/index.ts'
@@ -302,6 +310,8 @@ export function registerBuiltinGames(): void {
     cutropeGame, patterniqGame, idlecraftGame,
     dungeonGame, galconGame, matchstickGame, detectiveGame,
     davinciGame, vennpuzzleGame, symmetryGame, magnetsGame,
+    frogswapGame, dicegridGame, binpackGame, takesixGame,
+    trailmemoryGame, draughtsGame, planarityGame, banqiGame,
   ]) {
     if (getGame(game.id) === undefined) registerGame(game)
   }
