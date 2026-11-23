@@ -130,7 +130,7 @@ export function createPlanarityRenderer(): PlanarityRenderer {
     particles.tick(ctx, 16)
 
     // HUD（左列 2 行，右列 3 行右锚定，两列横向相距充足不重叠）。
-    hudPair(ctx, 16, 26, '关卡', (state.levelIndex + 1) + '/' + LEVEL_COUNT)
+    hudPair(ctx, 16, 26, '关卡', state.levelIndex + 1 < LEVEL_COUNT ? (state.levelIndex + 1) + '/' + LEVEL_COUNT : (state.levelIndex + 1) + ' ·无尽')
     hudPair(ctx, 16, 46, '总分', String(totalScore(state)))
     const pairs = countCrossings(state.vertices, state.edges)
     hudPair(ctx, W - 16, 26, '交叉', String(pairs), 'right', pairs === 0 ? THEME.good : THEME.bad)

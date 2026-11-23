@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BOARD, LEVEL_COUNT, LEVEL_VERTICES, W, H,
+  BOARD, LEVEL_COUNT, LEVEL_VERTICES, W, H, levelVertices,
   countCrossings, createPlanarity, crossingEdgeSet, dragTo, endDrag, generatePlanarityLevel,
   mulberry32, nextLevel, segmentsCross, startDrag, tickTime, totalScore,
   type Edge, type Pt,
@@ -164,10 +164,14 @@ describe('planarity logic', () => {
       dragTo(cur, cur.solution[i]!)
       endDrag(cur)
     }
-    expect(cur.phase).toBe('allwon')
+    // 无尽模式：过关恒 'won'，nextLevel 永远推进（levelIndex 无上限）。
+    expect(cur.phase).toBe('won')
     expect(totalScore(cur)).toBe(cur.bankedScore + cur.levelScore)
-    // 末关再 nextLevel 原样返回。
-    expect(nextLevel(cur)).toBe(cur)
+    const nxt = nextLevel(cur)
+    expect(nxt.levelIndex).toBe(cur.levelIndex + 1)
+    // 无尽难度曲线：顶点数增长且封顶 14。
+    expect(levelVertices(cur.levelIndex + 1)).toBeLessThanOrEqual(14)
+    expect(levelVertices(50)).toBe(14)
   })
 
   it('nextLevel 派生新盘面：种子可重放、银行分结转、步数清零', () => {

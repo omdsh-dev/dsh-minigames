@@ -54,10 +54,15 @@ export interface PlanarityState {
 /** 逻辑画布尺寸（与渲染层约定一致）。 */
 export const W = 720
 export const H = 520
-/** 总关卡数。 */
+/** 基础关数（无尽模式里程碑；HUD 显示用）。 */
 export const LEVEL_COUNT = 5
-/** 每关顶点数：6 → 10。 */
+/** 无尽模式标记。 */
+export const ENDLESS = true as const
+/** 每关顶点数：前 5 关 6 → 10；无尽模式逐关 +1 封顶 14（保持可拖密度）。 */
 export const LEVEL_VERTICES = [6, 7, 8, 9, 10] as const
+export function levelVertices(levelIndex: number): number {
+  return levelIndex < LEVEL_VERTICES.length ? LEVEL_VERTICES[levelIndex]! : Math.min(14, 10 + Math.floor((levelIndex - 4) / 2))
+}
 /** 顶点可拖动区域（留出 HUD 与说明按钮边距）。 */
 export const BOARD = { minX: 46, maxX: W - 46, minY: 74, maxY: H - 58 } as const
 
@@ -222,7 +227,7 @@ function shuffle<T>(rng: () => number, arr: T[]): T[] {
  * @param levelIndex - 关卡下标（0 起，决定顶点数与边密度）。
  * @returns 顶点 / 参考解 / 边。 */
 export function generatePlanarityLevel(seed: number, levelIndex: number): { vertices: Pt[]; solution: Pt[]; edges: Edge[] } {
-  const n = LEVEL_VERTICES[levelIndex] ?? 6
+  const n = levelVertices(levelIndex)
   const rng = mulberry32(Math.floor(seed) >>> 0)
   // 理想布局：圆心取盘面中心，半径收进可拖区域。
   const cx = (BOARD.minX + BOARD.maxX) / 2
@@ -233,7 +238,7 @@ export function generatePlanarityLevel(seed: number, levelIndex: number): { vert
   const edges: Edge[] = []
   for (let i = 0; i < n; i += 1) edges.push({ a: i, b: (i + 1) % n })
   const chords = shuffle(rng, triangulate(rng, n))
-  const keep = Math.max(2, Math.round((n - 3) * (0.45 + 0.14 * levelIndex)))
+  const keep = Math.max(2, Math.round((n - 3) * Math.min(0.95, 0.45 + 0.14 * levelIndex)))
   for (let i = 0; i < Math.min(keep, chords.length); i += 1) edges.push(chords[i]!)
   edges.sort((p, q) => p.a - q.a || p.b - q.b)
   // 打乱顶点位置：拒绝采样保证最小间距；整体重试保证开局必有交叉。
@@ -314,7 +319,8 @@ export function checkWin(state: PlanarityState): boolean {
   if (countCrossings(state.vertices, state.edges) > 0) return false
   if (state.dragIndex >= 0 && !state.dragMoved) return false
   state.levelScore = settleScore(state)
-  state.phase = state.levelIndex >= LEVEL_COUNT - 1 ? 'allwon' : 'won'
+  // 无尽模式：每关过关都进下一关（levelIndex 无上限，难度由 levelVertices 封顶）。
+  state.phase = 'won'
   return true
 }
 
@@ -360,7 +366,6 @@ export function endDrag(state: PlanarityState): void {
  * @param state - 当前状态。
  * @returns 下一关新状态。 */
 export function nextLevel(state: PlanarityState): PlanarityState {
-  if (state.levelIndex >= LEVEL_COUNT - 1) return state
   return createPlanarity(state.baseSeed, state.levelIndex + 1, state.bankedScore + state.levelScore)
 }
 

@@ -49,10 +49,13 @@ export interface PlanarityState {
 /** 逻辑画布尺寸（与渲染层约定一致）。 */
 export declare const W = 720;
 export declare const H = 520;
-/** 总关卡数。 */
+/** 基础关数（无尽模式里程碑；HUD 显示用）。 */
 export declare const LEVEL_COUNT = 5;
-/** 每关顶点数：6 → 10。 */
+/** 无尽模式标记。 */
+export declare const ENDLESS: true;
+/** 每关顶点数：前 5 关 6 → 10；无尽模式逐关 +1 封顶 14（保持可拖密度）。 */
 export declare const LEVEL_VERTICES: readonly [6, 7, 8, 9, 10];
+export declare function levelVertices(levelIndex: number): number;
 /** 顶点可拖动区域（留出 HUD 与说明按钮边距）。 */
 export declare const BOARD: {
     readonly minX: 46;

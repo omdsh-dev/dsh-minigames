@@ -158,6 +158,11 @@ function createBanqiGame(host: HTMLElement, options?: MiniGameMountOptions): Min
     if (index === null) return
     const piece = state.board[index]
     if (piece == null) {
+      // 空格：若是当前选中子的合法落点则走子（原先直接取消选中——空格移动永远不触发）。
+      if (selected !== null && view.targets.includes(index)) {
+        perform({ kind: 'move', from: selected, to: index })
+        return
+      }
       selected = null
     } else if (!piece.revealed) {
       if (legalActions(state, 'red').some((a) => a.kind === 'flip' && a.index === index)) {
