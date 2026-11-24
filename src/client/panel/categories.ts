@@ -47,9 +47,9 @@ const CATEGORY_OF: Readonly<Record<string, string>> = {
   dodger: 'arcade', stack: 'arcade', jumper: 'arcade', avalanche: 'arcade',
   suika: 'arcade', tanks: 'arcade', td: 'arcade', slither: 'arcade',
   fruitslash: 'arcade', gravflip: 'arcade', copter: 'arcade',
-  whack: 'arcade', piano: 'arcade', rhythm: 'arcade', elevator: 'arcade', sorter: 'arcade', ringtoss: 'arcade', dig: 'arcade', claw: 'arcade', plinko: 'arcade', firefighter: 'arcade', burger: 'arcade', missile: 'arcade',
+  whack: 'arcade', piano: 'arcade', rhythm: 'arcade', elevator: 'arcade', sorter: 'arcade', ringtoss: 'arcade', dig: 'arcade', claw: 'arcade', plinko: 'arcade', firefighter: 'arcade', screwsort: 'arcade', burger: 'arcade', missile: 'arcade',
   // 反应
-  aimtrack: 'reflex', simon: 'reflex', schulte: 'reflex', stroop: 'reflex', morse: 'reflex', lockpick: 'reflex', plates: 'reflex', rps: 'reflex', nback: 'reflex', musicbox: 'reflex', setgame: 'reflex', trailmemory: 'reflex',
+  aimtrack: 'reflex', simon: 'reflex', schulte: 'reflex', stroop: 'reflex', morse: 'reflex', lockpick: 'reflex', plates: 'reflex', rps: 'reflex', nback: 'reflex', musicbox: 'reflex', setgame: 'reflex', trailmemory: 'reflex', typefall: 'reflex',
   reaction: 'reflex', typing: 'reflex', juggle: 'reflex', steadyhand: 'reflex',
   qwop: 'reflex',
   // 物理·运动

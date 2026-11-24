@@ -233,6 +233,10 @@ import { dicedungeonGame } from './dicedungeon/index.ts'
 import { pixelpainterGame } from './pixelpainter/index.ts'
 import { timelineGame } from './timeline/index.ts'
 import { ludoGame } from './ludo/index.ts'
+import { screwsortGame } from './screwsort/index.ts'
+import { bloomGame } from './bloom/index.ts'
+import { typefallGame } from './typefall/index.ts'
+import { rotationGame } from './rotation/index.ts'
 import { masyuGame } from './masyu/index.ts'
 import { blackjackGame } from './blackjack/index.ts'
 import { flooditGame } from './floodit/index.ts'
@@ -317,6 +321,7 @@ export function registerBuiltinGames(): void {
     frogswapGame, dicegridGame, binpackGame, takesixGame,
     trailmemoryGame, draughtsGame, planarityGame, banqiGame,
     dicedungeonGame, pixelpainterGame, timelineGame, ludoGame,
+    screwsortGame, bloomGame, typefallGame, rotationGame,
   ]) {
     if (getGame(game.id) === undefined) registerGame(game)
   }
