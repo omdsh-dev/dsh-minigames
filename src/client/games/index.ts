@@ -229,6 +229,10 @@ import { trailmemoryGame } from './trailmemory/index.ts'
 import { draughtsGame } from './draughts/index.ts'
 import { planarityGame } from './planarity/index.ts'
 import { banqiGame } from './banqi/index.ts'
+import { dicedungeonGame } from './dicedungeon/index.ts'
+import { pixelpainterGame } from './pixelpainter/index.ts'
+import { timelineGame } from './timeline/index.ts'
+import { ludoGame } from './ludo/index.ts'
 import { masyuGame } from './masyu/index.ts'
 import { blackjackGame } from './blackjack/index.ts'
 import { flooditGame } from './floodit/index.ts'
@@ -312,6 +316,7 @@ export function registerBuiltinGames(): void {
     davinciGame, vennpuzzleGame, symmetryGame, magnetsGame,
     frogswapGame, dicegridGame, binpackGame, takesixGame,
     trailmemoryGame, draughtsGame, planarityGame, banqiGame,
+    dicedungeonGame, pixelpainterGame, timelineGame, ludoGame,
   ]) {
     if (getGame(game.id) === undefined) registerGame(game)
   }
