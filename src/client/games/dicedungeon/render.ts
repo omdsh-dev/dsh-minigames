@@ -161,13 +161,24 @@ function drawEnemy(ctx: CanvasRenderingContext2D, v: DungeonView): void {
   ctx.lineWidth = 1.5
   ctx.fill()
   ctx.stroke()
-  ctx.textAlign = 'center'
-  ctx.font = 'bold 17px system-ui, sans-serif'
+  // 行1：名字左对齐 + 楼层右对齐（原名居中 17px 与右对齐意图几乎同水平带，
+  // 「守塔巨龙 F5/5」跨 x+61..179、长意图右起 x+90——横纵皆重叠）。
+  ctx.textAlign = 'left'
+  ctx.font = 'bold 15px system-ui, sans-serif'
   ctx.fillStyle = THEME.text
-  ctx.fillText(v.enemy.name + '  F' + String(v.floor) + '/' + String(MAX_FLOOR), x + w / 2, y + 26)
+  ctx.fillText(v.enemy.name, x + 12, y + 22)
+  ctx.textAlign = 'right'
+  ctx.font = '600 11px system-ui, sans-serif'
+  ctx.fillStyle = THEME.textMuted
+  ctx.fillText('F' + String(v.floor) + '/' + String(MAX_FLOOR), x + w - 12, y + 22)
+  // 行2：意图独占整行（左对齐，宽度全可用，不再与任何文字共线）。
+  ctx.textAlign = 'left'
+  ctx.font = '600 11px system-ui, sans-serif'
+  ctx.fillStyle = v.enemy.charging ? THEME.bad : THEME.textMuted
+  ctx.fillText(v.intent, x + 12, y + 38)
   // HP 条（面板内边距 16）。
   const barX = x + 16
-  const barY = y + 38
+  const barY = y + 46
   const barW = w - 32
   const barH = 12
   roundRectPath(ctx, barX, barY, barW, barH, 6)
@@ -181,6 +192,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, v: DungeonView): void {
     ctx.fill()
     noGlow(ctx)
   }
+  ctx.textAlign = 'center'
   ctx.font = '600 11px system-ui, sans-serif'
   ctx.fillStyle = THEME.textMuted
   ctx.fillText(String(Math.max(0, v.enemy.hp)) + ' / ' + String(v.enemy.maxHp), x + w / 2, barY + 26)
@@ -191,11 +203,6 @@ function drawEnemy(ctx: CanvasRenderingContext2D, v: DungeonView): void {
     ctx.fillStyle = THEME.gold
     ctx.fillText('灼烧×' + String(v.enemy.burn), x + 12, y + h - 10)
   }
-  // 意图文案（首行右对齐；灼烧已移到底部独立行，两者不再同行）。
-  ctx.font = '600 12px system-ui, sans-serif'
-  ctx.textAlign = 'right'
-  ctx.fillStyle = v.enemy.charging ? THEME.bad : THEME.textMuted
-  ctx.fillText(v.intent, x + w - 12, y + 20)
 }
 
 /** HUD：层数 / 生命 / 护盾（左），回合（右）。 */
