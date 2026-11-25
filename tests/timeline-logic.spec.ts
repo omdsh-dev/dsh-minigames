@@ -3,6 +3,7 @@ import {
   EVENT_BANK, LEVELS, createRoundState, dealRound, insertCard, mulberry32,
   returnToHand, scoreForLevel, submitRound, swapPlaced, tickTimer,
 } from '../src/client/games/timeline/logic.ts'
+import type { TimelineEvent, TimelineState } from '../src/client/games/timeline/logic.ts'
 
 describe('timeline logic', () => {
   it('题库：66 张事件卡，三类各不少于 15，id 与名称全库唯一，年份合法', () => {
@@ -144,6 +145,59 @@ describe('timeline logic', () => {
       if (h.direction === 'earlier') expect(h.card.year).toBeLessThan(h.ref.year)
       else expect(h.card.year).toBeGreaterThan(h.ref.year)
     }
+  })
+
+  it('错误方向提示：就近取错卡本应相邻的锁定卡，方向与建议位置一致', () => {
+    // 最小复现：锚点 1900、已放 1950（相对锚点有序即锁定），手插 1920 到其右侧。
+    const anchor: TimelineEvent = { id: 901, name: '锚点卡', year: 1900, category: 'tech' }
+    const placed: TimelineEvent = { id: 902, name: '已放卡', year: 1950, category: 'tech' }
+    const wrongCard: TimelineEvent = { id: 903, name: '错卡', year: 1920, category: 'tech' }
+    const st: TimelineState = {
+      level: 1, seed: 1,
+      round: { cards: [anchor, placed, wrongCard], anchor },
+      hand: [wrongCard], timeline: [anchor, placed],
+      errors: 0, remainingSec: 0, phase: 'playing', hints: [],
+    }
+    expect(insertCard(st, wrongCard.id, 2)).toBe(true)
+    const res = submitRound(st)!
+    expect(res.allCorrect).toBe(false)
+    // 1950 不因旁边出现错误卡而回手，仍锁定在轴上。
+    expect(res.wrong).toEqual([wrongCard])
+    expect(st.timeline).toEqual([anchor, placed])
+    // 提示应为「比 1950 更早」：参照是错卡本应相邻的 1950，应放其左侧。
+    expect(res.hints).toHaveLength(1)
+    const h = res.hints[0]!
+    expect(h.card).toBe(wrongCard)
+    expect(h.ref).toBe(placed)
+    expect(h.direction).toBe('earlier')
+    expect(h.card.year).toBeLessThan(h.ref.year)
+  })
+
+  it('错误方向提示：两侧都有锁定卡时取违例一侧；回手后按提示方向可修正过关', () => {
+    // [1850, 1900锚点, 1950] 均锁定，1999 插到最左 → 应比 1850 更晚（放其右侧）。
+    const anchor: TimelineEvent = { id: 911, name: '锚点卡', year: 1900, category: 'tech' }
+    const a: TimelineEvent = { id: 912, name: '左锁定卡', year: 1850, category: 'tech' }
+    const b: TimelineEvent = { id: 913, name: '右锁定卡', year: 1950, category: 'tech' }
+    const c: TimelineEvent = { id: 914, name: '错卡', year: 1999, category: 'tech' }
+    const st: TimelineState = {
+      level: 1, seed: 2,
+      round: { cards: [a, anchor, b, c], anchor },
+      hand: [c], timeline: [a, anchor, b],
+      errors: 0, remainingSec: 0, phase: 'playing', hints: [],
+    }
+    expect(insertCard(st, c.id, 0)).toBe(true)
+    const res = submitRound(st)!
+    expect(res.wrong).toEqual([c])
+    expect(st.timeline).toEqual([a, anchor, b])
+    const h = res.hints[0]!
+    // 就近取左侧锁定卡 1850：1999 > 1850 → 更晚（应放其右侧）。
+    expect(h.ref).toBe(a)
+    expect(h.direction).toBe('later')
+    expect(h.card.year).toBeGreaterThan(h.ref.year)
+    // 按提示方向修正后过关。
+    expect(insertCard(st, c.id, 3)).toBe(true)
+    expect(submitRound(st)!.allCorrect).toBe(true)
+    expect(st.phase).toBe('cleared')
   })
 
   it('submitRound 前置条件：手牌未清空或非 playing 阶段返回 null', () => {

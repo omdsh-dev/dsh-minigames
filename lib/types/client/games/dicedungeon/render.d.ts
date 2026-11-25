@@ -23,6 +23,17 @@ export declare const END_TURN_RECT: {
     w: number;
     h: number;
 };
+/**
+ * 按实测宽度把文案贪心折成最多 maxLines 行（CJK 友好：逐字断行，
+ * 不依赖空格）。渲染层用 ctx.measureText 做宽度函数，测试可用
+ * 固定字宽桩验证断行逻辑。超过 maxLines 时末行截断加省略号。
+ * @param text 待折行文案
+ * @param maxWidth 单行最大宽度（px，含省略号占用）
+ * @param measureWidth 以目标字体测量字符串宽度的函数
+ * @param maxLines 最大行数（至少 1）
+ * @returns 折行结果（至少 1 行，均不超过 maxWidth，除非单个字形本身超宽）
+ */
+export declare function wrapTextByMeasure(text: string, maxWidth: number, measureWidth: (s: string) => number, maxLines?: number): string[];
 /** 当前已解锁槽列表（火球 / 吸血随层数解锁）。 */
 export declare function unlockedSlots(v: DungeonView): SlotKind[];
 /** 每颗骰子的命中矩形（与绘制共用几何）。 */

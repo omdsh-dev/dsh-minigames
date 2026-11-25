@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest'
 import {
   GOAL_POS, PLANES, RING_LEN, SAFE_CELLS, START_INDEX,
   aiChooseMove, applyPieceMove, chooseMove, createLudo, finishedCount,
-  legalMovesFor, mulberry32, nextRound, ringIndexFor, rollFor, safeOwner,
+  legalMovesFor, mulberry32, nextRound, nextTurnSide, ringIndexFor, rollFor, safeOwner,
+  standings,
   type LudoState,
 } from '../src/client/games/ludo/logic.ts'
 
@@ -247,5 +248,99 @@ describe('ludo logic', () => {
     forceRoll(s, 3)
     applyPieceMove(s, 'you', legalMovesFor(s, 'you', 3)[0]!)
     expect(s.turn).toBe('ai')
+  })
+})
+describe('ludo multiplayer（2/3/4 人）', () => {
+  it('多人布局：3 人 sides 依次红黄蓝，起飞格互不相撞、各隔 13 格', () => {
+    const s = createLudo(11, 3)
+    expect(s.playerCount).toBe(3)
+    expect(s.sides).toEqual(['you', 'ai', 'blue'])
+    const starts = s.sides.map(sd => START_INDEX[sd])
+    expect(new Set(starts).size).toBe(3)
+    // 经典四色间距：红 40 → 黄 1 → 蓝 14 →（绿 27）→ 红 40，各隔 13。
+    expect((1 - 40 + 52) % 52).toBe(13)
+    expect(14 - 1).toBe(13)
+    expect(27 - 14).toBe(13)
+    expect((40 - 27 + 52) % 52).toBe(13)
+    expect(ringIndexFor('blue', 0)).toBe(14)
+    // 参战方安全格生效；未参战的绿方格作普通格。
+    expect(safeOwner(14, s.sides)).toBe('blue')
+    expect(safeOwner(22, s.sides)).toBe('blue')
+    expect(safeOwner(27, s.sides)).toBeNull()
+    // 缺省（2 人制）下蓝方安全格同样是普通格。
+    expect(safeOwner(14)).toBeNull()
+    const t = createLudo(12, 4)
+    expect(t.sides).toEqual(['you', 'ai', 'blue', 'green'])
+    expect(t.turn).toBe('you')
+  })
+
+  it('踩子跨方：红方可以踩掉蓝方飞机并送回机场', () => {
+    const s = createLudo(13, 3)
+    s.pieces.you = [0, -1, -1, -1] // 红 0 步在环 40
+    s.pieces.blue = [32, -1, -1, -1] // 蓝 32 步在环 46；红 +6 落环 46
+    forceRoll(s, 6)
+    expect(s.phase).toBe('move')
+    const m = legalMovesFor(s, 'you', 6).find(mm => mm.piece === 0)
+    expect(m).toBeDefined()
+    expect(m!.captured).toEqual([0])
+    expect(m!.capturedSides).toEqual(['blue'])
+    applyPieceMove(s, 'you', m!)
+    expect(s.pieces.you[0]).toBe(6)
+    expect(s.pieces.blue[0]).toBe(-1)
+    // 掷 6 行子后同一方再掷。
+    expect(s.turn).toBe('you')
+    expect(s.phase).toBe('roll')
+  })
+
+  it('轮换跳胜者：蓝方已全部到终后被跳过，轮换红→黄→红', () => {
+    const s = createLudo(14, 3)
+    s.pieces.blue = [56, 56, 56, 56] // 蓝方获胜（整场已定，这里只测轮换）
+    expect(nextTurnSide(s, 'you')).toBe('ai')
+    expect(nextTurnSide(s, 'ai')).toBe('you')
+    // 无子可动的过手同样跳过蓝方：黄方掷非 6 后轮到红方。
+    s.turn = 'ai'
+    s.pieces.ai = [-1, -1, -1, -1]
+    forceRoll(s, 3)
+    expect(s.turn).toBe('you')
+    expect(s.message).toContain('无子可动')
+  })
+
+  it('多人胜负：先 4 架全部到终即整场结束，单局定胜负且名次合理', () => {
+    const s = createLudo(15, 3)
+    s.pieces.you = [56, 56, 56, 55]
+    s.pieces.ai = [10, 20, 30, 40]
+    s.pieces.blue = [5, 5, 5, 5]
+    forceRoll(s, 1)
+    applyPieceMove(s, 'you', legalMovesFor(s, 'you', 1)[0]!)
+    expect(s.matchWinner).toBe('you')
+    expect(s.phase).toBe('matchOver')
+    expect(s.round).toBe(1)
+    expect(s.roundWinsYou).toBe(0) // 多人不累计局分
+    // 名次：胜者居首，其余按剩余进度（黄 > 蓝）。
+    expect(standings(s)).toEqual(['you', 'ai', 'blue'])
+  })
+
+  it('多人整场重放：3 人贪心自动对局必然终局且两次重放完全一致', () => {
+    const play = (): LudoState => {
+      const s = createLudo(4343, 3)
+      let guard = 0
+      while (s.matchWinner === null) {
+        guard += 1
+        expect(guard).toBeLessThan(8000)
+        rollFor(s)
+        if (s.phase === 'move') {
+          const move = chooseMove(s, s.turn)
+          if (move !== null) applyPieceMove(s, s.turn, move)
+        }
+      }
+      return s
+    }
+    const a = play()
+    const b = play()
+    expect(a.matchWinner).not.toBeNull()
+    expect(a.sides).toContain(a.matchWinner!)
+    expect(a.pieces).toEqual(b.pieces)
+    expect(a.matchWinner).toBe(b.matchWinner)
+    expect(a.rollNo).toBe(b.rollNo)
   })
 })

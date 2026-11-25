@@ -1,12 +1,13 @@
 /**
  * 飞行棋 Ludo 渲染层：经典四色十字盘（机场四角、跑道格着色、安全格
- * 星标、终点箭头）、右侧骰子与局分 HUD、飞机形棋子与叠子计数、踩子
- * 回程幽灵动画、说明按钮与帮助面板（画在整个渲染函数末尾、永远最上
- * 层）、暂停与胜负 overlay。所有布局常量集中声明，供命中检测与遮挡
- * 核算共用，杜绝绘制与命中错位。
+ * 星标、终点箭头）、开局人数选择 overlay（2/3/4 人）、右侧骰子与人数
+ * HUD、飞机形棋子与叠子计数、悬停落点预览高亮、踩子回程幽灵动画、
+ * 说明按钮与帮助面板（画在整个渲染函数末尾、永远最上层）、暂停与胜
+ * 负 overlay。所有布局常量集中声明，供命中检测与遮挡核算共用，杜绝
+ * 绘制与命中错位。
  */
 import { THEME, accent, drawBackground, drawOverlay, glow, hudPair, noGlow, roundRectPath } from '../theme.ts'
-import { GOAL_POS, RING_LAST, type LudoState, type Side } from './logic.ts'
+import { GOAL_POS, RING_LAST, START_INDEX, type LudoState, type Side } from './logic.ts'
 
 /** 逻辑画布尺寸。 */
 export const LOGICAL_W = 700
@@ -29,13 +30,20 @@ const HELP_RECT = { x: 630, y: 530, w: 60, h: 24 }
 /** 底部操作提示。 */
 const HINT_Y = 551
 
-/** 四色（红=玩家、黄=AI 亮色；绿/蓝为盘面装饰暗色）。 */
+/** 四色（红=玩家 you、黄=ai、蓝=blue、绿=green）。 */
 const RED = accent(4)
 const YEL = accent(3)
 const GREEN = THEME.good
 const BLUE = accent(0)
-const sideColor = (side: Side): string => (side === 'you' ? RED : YEL)
-const sideDim = (side: Side): string => (side === 'you' ? 'rgba(247,118,142,0.28)' : 'rgba(224,175,104,0.28)')
+const SIDE_COLOR: Record<Side, string> = { you: RED, ai: YEL, blue: BLUE, green: GREEN }
+const SIDE_DIM: Record<Side, string> = {
+  you: 'rgba(247,118,142,0.28)',
+  ai: 'rgba(224,175,104,0.28)',
+  blue: 'rgba(122,162,247,0.28)',
+  green: 'rgba(126,211,141,0.28)',
+}
+const sideColor = (side: Side): string => SIDE_COLOR[side]
+const sideDim = (side: Side): string => SIDE_DIM[side]
 
 /** 环形跑道 52 格的网格坐标 [col,row]（顺时针，下标即环上下标）。 */
 export const RING_PATH: ReadonlyArray<readonly [number, number]> = [
@@ -53,24 +61,28 @@ export const RING_PATH: ReadonlyArray<readonly [number, number]> = [
   [0, 7],
 ]
 
-/** 终点直线 51-55 步的网格坐标（56 步为中心终点）。 */
+/** 终点直线 51-55 步的网格坐标（56 步为中心终点；含全部四色）。 */
 const HOME_PATH: Record<Side, ReadonlyArray<readonly [number, number]>> = {
   you: [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9]],
   ai: [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7]],
+  blue: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7]],
+  green: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],
 }
 
-/** 机场四角停机位的网格坐标（红左下、黄左上；下标即飞机编号）。 */
+/** 机场四角停机位的网格坐标（红左下、黄左上、绿右上、蓝右下）。 */
 const AIRPORT: Record<Side, ReadonlyArray<readonly [number, number]>> = {
   you: [[1, 10], [4, 10], [1, 13], [4, 13]],
   ai: [[1, 1], [4, 1], [1, 4], [4, 4]],
+  green: [[10, 1], [13, 1], [10, 4], [13, 4]],
+  blue: [[10, 10], [13, 10], [10, 13], [13, 13]],
 }
 
-/** 各色起飞格下标（渲染着色用，含未参战的绿/蓝）。 */
+/** 各色起飞格下标（渲染着色用）。 */
 const COLOR_START: ReadonlyArray<{ idx: number, color: string }> = [
   { idx: 40, color: RED },
   { idx: 1, color: YEL },
-  { idx: 14, color: GREEN },
-  { idx: 27, color: BLUE },
+  { idx: 14, color: BLUE },
+  { idx: 27, color: GREEN },
 ]
 /** 星标安全格（每色起飞格 + 8 步处）。 */
 const STAR_CELLS = [9, 22, 35, 48]
@@ -90,10 +102,10 @@ function cellCenter(col: number, row: number): { x: number, y: number } {
 export function posToCenter(side: Side, pos: number, piece: number): { x: number, y: number } {
   if (pos === -1) {
     const slot = AIRPORT[side][piece] ?? [2, 2]
-    return cellCenter(slot[0], slot[1])
+    return cellCenter(slot[0]!, slot[1]!)
   }
   if (pos <= RING_LAST) {
-    const idx = ((side === 'you' ? 40 : 1) + pos) % 52
+    const idx = (START_INDEX[side] + pos) % 52
     const cell = RING_PATH[idx] ?? RING_PATH[0]!
     return cellCenter(cell[0], cell[1])
   }
@@ -109,11 +121,17 @@ export interface LudoView {
   state: LudoState
   /** 玩家当前可动的飞机编号（高亮 + 命中）。 */
   movable: number[]
+  /** 开局人数选择中（未选 2/3/4 前不进入对局）。 */
+  setup: boolean
+  /** 悬停预览：待行子阶段鼠标悬停的可动飞机编号（无则 null）。 */
+  hoverPiece: number | null
+  /** 悬停飞机的预览落点位置编码（hoverPiece 非空时有效）。 */
+  hoverTo: number | null
   /** 骰子滚动中。 */
   rolling: boolean
   /** 滚动动画当前显示面。 */
   rollingFace: number
-  /** 最近捕获（跑道绝对下标 + 触发时刻），驱动回程幽灵动画。 */
+  /** 最近捕获（跑道绝对下标 + 触发时刻 + 受害方），驱动回程幽灵动画。 */
   capture: { cells: number[], at: number, victim: Side } | null
   userPaused: boolean
   paused: boolean
@@ -129,6 +147,26 @@ export function rollButtonAt(x: number, y: number): boolean {
 /** 说明按钮是否被点中。 */
 export function helpButtonAt(x: number, y: number): boolean {
   return x >= HELP_RECT.x && x <= HELP_RECT.x + HELP_RECT.w && y >= HELP_RECT.y && y <= HELP_RECT.y + HELP_RECT.h
+}
+
+/** 开局人数按钮（2/3/4 人，垂直排列于盘面中央）。 */
+const SETUP_BUTTONS: ReadonlyArray<{ count: number, x: number, y: number, w: number, h: number }> = [
+  { count: 2, x: 240, y: 200, w: 220, h: 44 },
+  { count: 3, x: 240, y: 256, w: 220, h: 44 },
+  { count: 4, x: 240, y: 312, w: 220, h: 44 },
+]
+
+/**
+ * 开局人数按钮命中检测。
+ * @param x - 逻辑横坐标。
+ * @param y - 逻辑纵坐标。
+ * @returns 命中的人数（2/3/4），未命中返回 null。
+ */
+export function setupButtonAt(x: number, y: number): number | null {
+  for (const b of SETUP_BUTTONS) {
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b.count
+  }
+  return null
 }
 
 /**
@@ -221,20 +259,20 @@ function drawDice(ctx: CanvasRenderingContext2D, face: number, cx: number, cy: n
   }
 }
 
-/** 画盘面：底板、机场角块、跑道格、着色起飞格、星标、终点直线与中心。 */
-function drawBoard(ctx: CanvasRenderingContext2D): void {
+/** 画盘面：底板、机场角块、跑道格、着色起飞格、星标、终点直线与中心。参战色亮显，未参战色暗化装饰。 */
+function drawBoard(ctx: CanvasRenderingContext2D, active: readonly Side[]): void {
   roundRectPath(ctx, BOARD_X, BOARD_Y, 15 * CELL, 15 * CELL, 8)
   ctx.fillStyle = THEME.panel
   ctx.fill()
   ctx.strokeStyle = THEME.panelEdge
   ctx.lineWidth = 1
   ctx.stroke()
-  // 机场四角：红左下、黄左上为主角；绿右上、蓝右下为经典装饰（暗化）。
+  // 机场四角：红左下、黄左上、绿右上、蓝右下；未参战色暗化。
   const corners: ReadonlyArray<{ col: number, row: number, color: string, alpha: number }> = [
-    { col: 0, row: 9, color: RED, alpha: 0.2 },
-    { col: 0, row: 0, color: YEL, alpha: 0.2 },
-    { col: 9, row: 0, color: GREEN, alpha: 0.1 },
-    { col: 9, row: 9, color: BLUE, alpha: 0.1 },
+    { col: 0, row: 9, color: RED, alpha: active.includes('you') ? 0.2 : 0.1 },
+    { col: 0, row: 0, color: YEL, alpha: active.includes('ai') ? 0.2 : 0.1 },
+    { col: 9, row: 0, color: GREEN, alpha: active.includes('green') ? 0.2 : 0.1 },
+    { col: 9, row: 9, color: BLUE, alpha: active.includes('blue') ? 0.2 : 0.1 },
   ]
   for (const c of corners) {
     roundRectPath(ctx, BOARD_X + c.col * CELL + 3, BOARD_Y + c.row * CELL + 3, 6 * CELL - 6, 6 * CELL - 6, 8)
@@ -245,8 +283,8 @@ function drawBoard(ctx: CanvasRenderingContext2D): void {
     ctx.strokeStyle = c.color
     ctx.stroke()
   }
-  // 主角机场停机位圆环。
-  for (const side of ['you', 'ai'] as const) {
+  // 参战色机场停机位圆环。
+  for (const side of active) {
     for (const [col, row] of AIRPORT[side]) {
       const c = cellCenter(col, row)
       ctx.beginPath()
@@ -271,12 +309,12 @@ function drawBoard(ctx: CanvasRenderingContext2D): void {
     ctx.strokeRect(x + 1, y + 1, CELL - 2, CELL - 2)
     if (STAR_CELLS.includes(i)) {
       const c = cellCenter(col, row)
-      const starColor = i === 48 ? RED : i === 9 ? YEL : i === 22 ? GREEN : BLUE
+      const starColor = i === 48 ? RED : i === 9 ? YEL : i === 22 ? BLUE : GREEN
       drawStar(ctx, c.x, c.y, starColor)
     }
   }
-  // 终点直线（越靠近中心颜色越浓）+ 指向中心的箭头。
-  for (const side of ['you', 'ai'] as const) {
+  // 终点直线（越靠近中心颜色越浓）+ 指向中心的箭头：参战色全亮。
+  for (const side of active) {
     const color = sideColor(side)
     for (let k = 0; k < HOME_PATH[side].length; k += 1) {
       const [col, row] = HOME_PATH[side][k]!
@@ -307,15 +345,12 @@ function drawBoard(ctx: CanvasRenderingContext2D): void {
     ctx.fillStyle = color
     ctx.fill()
   }
-  // 未参战两色的终点直线（装饰、暗化）：绿在顶臂中列、蓝在右臂中行。
-  const dimHomes: ReadonlyArray<{ cells: ReadonlyArray<readonly [number, number]>, color: string }> = [
-    { cells: [[7, 0], [7, 1], [7, 2], [7, 3], [7, 4]], color: GREEN },
-    { cells: [[14, 7], [13, 7], [12, 7], [11, 7], [10, 7]], color: BLUE },
-  ]
-  for (const h of dimHomes) {
-    for (const [col, row] of h.cells) {
+  // 未参战色的终点直线（装饰、暗化）。
+  for (const side of (['you', 'ai', 'blue', 'green'] as const) as Side[]) {
+    if (active.includes(side)) continue
+    for (const [col, row] of HOME_PATH[side]) {
       ctx.globalAlpha = 0.18
-      ctx.fillStyle = h.color
+      ctx.fillStyle = sideColor(side)
       ctx.fillRect(BOARD_X + col * CELL + 1, BOARD_Y + row * CELL + 1, CELL - 2, CELL - 2)
       ctx.globalAlpha = 1
     }
@@ -351,7 +386,7 @@ function drawBoard(ctx: CanvasRenderingContext2D): void {
 
 /** 画全部棋子：按位置聚合，同格叠子画 ×n 徽标；终点棋子向中心收拢。 */
 function drawPieces(ctx: CanvasRenderingContext2D, state: LudoState, movable: number[], now: number): void {
-  for (const side of ['you', 'ai'] as const) {
+  for (const side of state.sides) {
     const groups = new Map<number, number[]>()
     for (let i = 0; i < state.pieces[side].length; i += 1) {
       const pos = state.pieces[side][i]!
@@ -366,10 +401,12 @@ function drawPieces(ctx: CanvasRenderingContext2D, state: LudoState, movable: nu
       let y = c.y
       let scale = 1
       if (pos === GOAL_POS) {
-        // 终点棋子沿己方来向小幅排开，避免盖住中心图案。
+        // 终点棋子沿各自来向小幅排开，避免盖住中心图案。
         const off = (list.length - 1) * 3
-        x += side === 'you' ? -off : off
-        y += side === 'you' ? off : -off
+        if (side === 'you') { x -= off; y += off }
+        else if (side === 'ai') { x += off; y -= off }
+        else if (side === 'blue') { x -= off; y -= off }
+        else { x += off; y += off }
         scale = 0.7
       } else if (pos !== -1 && list.length > 1) {
         x -= (list.length - 1) * 4
@@ -393,6 +430,33 @@ function drawPieces(ctx: CanvasRenderingContext2D, state: LudoState, movable: nu
   }
 }
 
+/** 悬停预览：被悬停飞机加亮圈、其落点格画呼吸光斑（含终点与反弹位）。 */
+function drawHoverPreview(ctx: CanvasRenderingContext2D, view: LudoView): void {
+  if (view.hoverPiece === null || view.hoverTo === null) return
+  const pulse = 0.5 + 0.5 * Math.sin(view.now / 200)
+  const from = posToCenter('you', view.state.pieces.you[view.hoverPiece] ?? -1, view.hoverPiece)
+  ctx.beginPath()
+  ctx.arc(from.x, from.y, 13, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(255,236,170,' + (0.5 + pulse * 0.4).toFixed(2) + ')'
+  ctx.lineWidth = 2.5
+  ctx.stroke()
+  const target = posToCenter('you', view.hoverTo, view.hoverPiece)
+  const isGoal = view.hoverTo === GOAL_POS
+  ctx.beginPath()
+  ctx.arc(target.x, target.y, 14 + pulse * 3, 0, Math.PI * 2)
+  ctx.strokeStyle = isGoal ? 'rgba(255,215,120,' + (0.55 + pulse * 0.4).toFixed(2) + ')' : 'rgba(122,162,247,' + (0.5 + pulse * 0.45).toFixed(2) + ')'
+  ctx.lineWidth = 3
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(target.x, target.y)
+  ctx.setLineDash([4, 6])
+  ctx.strokeStyle = 'rgba(226,226,238,' + (0.28 + pulse * 0.2).toFixed(2) + ')'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
 /** 踩子回程幽灵动画：450ms 内被捕获敌机从被踩格飞回其机场并淡出。 */
 function drawCaptureGhost(ctx: CanvasRenderingContext2D, view: LudoView): void {
   if (view.capture === null) return
@@ -411,7 +475,7 @@ function drawCaptureGhost(ctx: CanvasRenderingContext2D, view: LudoView): void {
   }
 }
 
-/** 右侧 HUD：标题、局号、局分、回合指示、骰子、按钮、到终计数、消息。 */
+/** 右侧 HUD：标题、人数/局数/局分、回合指示、骰子、按钮、到终计数、消息。 */
 function drawHud(ctx: CanvasRenderingContext2D, view: LudoView): void {
   const state = view.state
   roundRectPath(ctx, PANEL_X - 8, 36, PANEL_W + 16, 428, 8)
@@ -425,16 +489,22 @@ function drawHud(ctx: CanvasRenderingContext2D, view: LudoView): void {
   ctx.fillStyle = THEME.text
   ctx.fillText('飞行棋', PANEL_X + PANEL_W / 2, 62)
   ctx.textAlign = 'left'
-  hudPair(ctx, PANEL_X, 92, '局数', state.round + '/3')
-  hudPair(ctx, PANEL_X, 114, '局分', '你 ' + state.roundWinsYou + ' - ' + state.roundWinsAi + ' 机')
-  const turnText = state.turn === 'you' ? '轮到你' : '对方行动中'
+  const isTwo = state.playerCount === 2
+  if (isTwo) {
+    hudPair(ctx, PANEL_X, 92, '局数', state.round + '/3')
+    hudPair(ctx, PANEL_X, 114, '局分', '你 ' + state.roundWinsYou + ' - ' + state.roundWinsAi + ' 黄')
+  } else {
+    hudPair(ctx, PANEL_X, 92, '人数', state.playerCount + ' 人')
+    hudPair(ctx, PANEL_X, 114, '赛制', '单局定胜负')
+  }
+  const turnText = state.turn === 'you' ? '轮到你' : SIDE_NAME_AI(state.turn) + '行动中'
   ctx.font = '600 13px system-ui, sans-serif'
   ctx.fillStyle = sideColor(state.turn)
   ctx.textAlign = 'left'
   ctx.fillText(turnText, PANEL_X, 138)
   const face = view.rolling ? view.rollingFace : state.dice ?? 0
   if (face > 0) drawDice(ctx, face, DICE_RECT.x + DICE_RECT.w / 2, DICE_RECT.y + DICE_RECT.h / 2, state.rolledSix && !view.rolling)
-  const canRoll = state.phase === 'roll' && state.turn === 'you' && !view.rolling
+  const canRoll = state.phase === 'roll' && state.turn === 'you' && !view.rolling && !view.setup
   roundRectPath(ctx, ROLL_RECT.x, ROLL_RECT.y, ROLL_RECT.w, ROLL_RECT.h, 6)
   ctx.fillStyle = canRoll ? accent(0) : THEME.panel
   ctx.fill()
@@ -444,12 +514,22 @@ function drawHud(ctx: CanvasRenderingContext2D, view: LudoView): void {
   ctx.font = '600 13px system-ui, sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText(view.rolling ? '掷骰中…' : '掷骰（空格）', ROLL_RECT.x + ROLL_RECT.w / 2, ROLL_RECT.y + 21)
-  let doneYou = 0
-  let doneAi = 0
-  for (const p of state.pieces.you) if (p === GOAL_POS) doneYou += 1
-  for (const p of state.pieces.ai) if (p === GOAL_POS) doneAi += 1
-  hudPair(ctx, PANEL_X, 288, '你到终', doneYou + '/4')
-  hudPair(ctx, PANEL_X, 310, '机到终', doneAi + '/4')
+  // 到终计数：按参战方逐行列出（色点 + 名称 + 计数）。
+  const doneRows: Array<[string, string, string]> = []
+  for (const side of state.sides) {
+    let done = 0
+    for (const p of state.pieces[side]) if (p === GOAL_POS) done += 1
+    doneRows.push([side === 'you' ? '你到终' : SIDE_NAME_AI(side) + '到终', done + '/4', sideColor(side)])
+  }
+  ctx.textAlign = 'left'
+  ctx.font = '600 12px system-ui, sans-serif'
+  for (let i = 0; i < doneRows.length; i += 1) {
+    const [label, val, color] = doneRows[i]!
+    ctx.fillStyle = color
+    ctx.fillText(label, PANEL_X, 296 + i * 20)
+    ctx.fillStyle = THEME.text
+    ctx.fillText(val, PANEL_X + 72, 296 + i * 20)
+  }
   // 消息区：12px、定宽换行，最多 4 行，右边界不超过面板。
   ctx.font = '500 12px system-ui, sans-serif'
   ctx.textAlign = 'left'
@@ -467,9 +547,18 @@ function drawHud(ctx: CanvasRenderingContext2D, view: LudoView): void {
     }
   }
   if (lines.length < 4 && line !== '') lines.push(line)
+  const msgY = 296 + doneRows.length * 20 + 12
   for (let i = 0; i < lines.length; i += 1) {
-    ctx.fillText(lines[i]!, PANEL_X, 340 + i * 18)
+    ctx.fillText(lines[i]!, PANEL_X, msgY + i * 18)
   }
+}
+
+/** AI 方中文名（HUD 短文案用）。 */
+function SIDE_NAME_AI(side: Side): string {
+  if (side === 'ai') return '黄方'
+  if (side === 'blue') return '蓝方'
+  if (side === 'green') return '绿方'
+  return '你'
 }
 
 /** 说明按钮（渲染末尾、最上层）。 */
@@ -487,14 +576,14 @@ function drawHelpButton(ctx: CanvasRenderingContext2D, open: boolean): void {
 }
 
 const HELP_LINES = [
-  '红方（你）对黄方（电脑）：每方 4 架飞机，3 局 2 胜。',
+  '你执红方，其余为电脑（黄/蓝/绿）；开局可选 2、3 或 4 人。',
+  '2 人制 3 局 2 胜；3/4 人单局定胜负：先 4 架全部到终者即赢整场。',
   '掷出 6 才能起飞；起飞或行子掷到 6 都能额外再掷一次。',
   '棋子沿顺时针跑道前进，掷几点走几步（跑道共 52 格）。',
   '落到敌方棋子所在普通格：把对方全部送回机场（踩子）。',
   '带色格与星格是安全格：敌方不能踩入，己方可叠、不挨踩。',
   '进入终点直线后必须掷出恰好点数到达终点（第 6 格），多出的步数原路反弹。',
-  '先让 4 架飞机全部到达终点者赢下该局；局分先到 2 者胜全场。',
-  '操作：空格或点骰子掷骰；点发光的飞机移动；空格也可自动走最优。',
+  '操作：空格或点骰子掷骰；点发光的飞机移动；悬停可预览落点；空格自动走最优。',
 ]
 
 /** 帮助面板（渲染最末尾、盖在一切之上，任何阶段可开合）。 */
@@ -525,30 +614,75 @@ function drawHelpPanel(ctx: CanvasRenderingContext2D): void {
   ctx.fillText('点右下角「说明」或按 H 关闭 · 暂停时也能看', LOGICAL_W / 2, y + h - 18)
 }
 
+/** 开局人数选择 overlay：2/3/4 人按钮，玩家恒执红。 */
+function drawSetupOverlay(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = 'rgba(10,10,16,0.72)'
+  ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+  const w = 300
+  const h = 250
+  const x = (LOGICAL_W - w) / 2
+  const y = (LOGICAL_H - h) / 2 - 20
+  roundRectPath(ctx, x, y, w, h, 10)
+  ctx.fillStyle = 'rgba(20,20,30,0.97)'
+  ctx.fill()
+  ctx.strokeStyle = THEME.gold
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.textAlign = 'center'
+  ctx.font = 'bold 20px system-ui, sans-serif'
+  ctx.fillStyle = THEME.text
+  ctx.fillText('飞行棋 · 选择人数', LOGICAL_W / 2, y + 42)
+  ctx.font = '500 12px system-ui, sans-serif'
+  ctx.fillStyle = THEME.textMuted
+  ctx.fillText('你执红方，其余为电脑 · 轮换按逆时针', LOGICAL_W / 2, y + 64)
+  const labels: Record<number, string> = {
+    2: '2 人（3 局 2 胜）',
+    3: '3 人（单局定胜负）',
+    4: '4 人（单局定胜负）',
+  }
+  for (const b of SETUP_BUTTONS) {
+    roundRectPath(ctx, b.x, b.y, b.w, b.h, 8)
+    ctx.fillStyle = accent(0)
+    ctx.fill()
+    ctx.strokeStyle = THEME.panelEdge
+    ctx.lineWidth = 1
+    ctx.stroke()
+    ctx.fillStyle = '#15151b'
+    ctx.font = '700 15px system-ui, sans-serif'
+    ctx.fillText(labels[b.count] ?? b.count + ' 人', b.x + b.w / 2, b.y + 27)
+  }
+}
+
 /**
- * 整帧渲染：背景 → 盘面 → 棋子 → 回程幽灵 → HUD → 底部提示 → 暂停/
- * 胜负 overlay → 说明按钮 → 帮助面板（最后两步永远最上层）。
+ * 整帧渲染：背景 → 盘面 → 棋子 → 悬停预览 → 回程幽灵 → HUD → 底部
+ * 提示 → 暂停/胜负 overlay → 开局人数选择 overlay → 说明按钮 → 帮助
+ * 面板（最后两步永远最上层）。
  * @param ctx - 已按逻辑坐标变换的 2d 上下文。
  * @param view - 本帧视图快照。
  */
 export function renderLudo(ctx: CanvasRenderingContext2D, view: LudoView): void {
   drawBackground(ctx, LOGICAL_W, LOGICAL_H)
-  drawBoard(ctx)
+  drawBoard(ctx, view.state.sides)
   drawPieces(ctx, view.state, view.movable, view.now)
+  if (!view.setup) drawHoverPreview(ctx, view)
   drawCaptureGhost(ctx, view)
   drawHud(ctx, view)
   ctx.textAlign = 'center'
   ctx.font = '500 12px system-ui, sans-serif'
   ctx.fillStyle = THEME.textMuted
-  ctx.fillText('空格/点骰子掷骰 · 点高亮飞机移动 · R 重开 · P 暂停 · H 说明', BOARD_X + 7.5 * CELL, HINT_Y)
-  if (view.paused && !view.userPaused) {
+  ctx.fillText('空格/点骰子掷骰 · 点高亮飞机移动 · 悬停预览落点 · R 重开 · P 暂停 · H 说明', BOARD_X + 7.5 * CELL, HINT_Y)
+  if (view.setup) {
+    drawSetupOverlay(ctx)
+  } else if (view.paused && !view.userPaused) {
     drawOverlay(ctx, LOGICAL_W, LOGICAL_H, '已暂停', '面板收起时自动暂停 · P 继续')
   } else if (view.userPaused) {
     drawOverlay(ctx, LOGICAL_W, LOGICAL_H, '暂停中', '按 P 继续 · R 重开整场')
   } else if (view.state.phase === 'roundOver') {
-    drawOverlay(ctx, LOGICAL_W, LOGICAL_H, view.state.roundWinner === 'you' ? '你赢下本局' : '对方赢下本局', '空格进入下一局', view.state.roundWinner === 'you' ? THEME.good : THEME.bad)
+    drawOverlay(ctx, LOGICAL_W, LOGICAL_H, view.state.roundWinner === 'you' ? '你赢下本局' : '黄方赢下本局', '空格进入下一局', view.state.roundWinner === 'you' ? THEME.good : THEME.bad)
   } else if (view.state.phase === 'matchOver') {
-    drawOverlay(ctx, LOGICAL_W, LOGICAL_H, view.state.matchWinner === 'you' ? '胜利！' : '惜败', '空格或点击再来一场', view.state.matchWinner === 'you' ? THEME.gold : THEME.bad)
+    const win = view.state.matchWinner === 'you'
+    const sub = view.state.playerCount === 2 ? '空格或点击再来一场' : '空格或点击再来一场（同人数）'
+    drawOverlay(ctx, LOGICAL_W, LOGICAL_H, win ? '胜利！' : '惜败', sub, win ? THEME.gold : THEME.bad)
   }
   drawHelpButton(ctx, view.helpOpen)
   if (view.helpOpen) drawHelpPanel(ctx)

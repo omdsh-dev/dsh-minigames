@@ -1,7 +1,7 @@
 /**
  * 时间线 Timeline 纯逻辑：内置 66 张事件卡题库（科技/历史/文化）、按注入
  * seed 发牌（mulberry32，锚点取年份中位卡）、插入/交换/收回操作、提交
- * 判定（相对邻居正确即锁定，错误卡回手并附「比 X 更早/更晚」提示）、
+ * 判定（锚点基准不动点锁定，错误卡回手并附「比 X 更早/更晚」提示）、
  * 错误计分与关卡限时。无 DOM、无副作用，全部确定性可测：同 level+seed
  * 重放完全一致，供 tests/timeline-logic.spec.ts 与渲染层共用。
  */
@@ -246,28 +246,51 @@ export function returnToHand(state: TimelineState, pos: number): boolean {
   return true
 }
 
-/** 一张卡在其位置是否相对两侧邻居有序（边界一侧恒满足；锚点恒正确）。 */
-function isLockedAt(state: TimelineState, i: number): boolean {
-  const card = state.timeline[i]!
-  if (card.id === state.round.anchor.id) return true
-  const prev = i > 0 ? state.timeline[i - 1]! : null
-  const next = i < state.timeline.length - 1 ? state.timeline[i + 1]! : null
-  if (prev !== null && card.year < prev.year) return false
-  if (next !== null && card.year > next.year) return false
-  return true
+/**
+ * 锚点基准的不动点锁定判定：从恒锁的锚点出发反复传播，一张卡只要相对
+ * 两侧最近的已锁定卡有序（不小于左侧、不大于右侧，边界一侧恒满足）即
+ * 锁定。已锁定的卡不因旁边出现错误卡而回手，错误卡的提示也因此总能就
+ * 近取到它本应相邻的锁定卡（或锚点）作参照。
+ * @param state 当前局面。
+ * @returns 与 timeline 等长的锁定标记数组（锚点恒为 true）。
+ */
+function computeLockedFlags(state: TimelineState): boolean[] {
+  const k = state.timeline.length
+  const flags: boolean[] = state.timeline.map((c) => c.id === state.round.anchor.id)
+  let changed = true
+  while (changed) {
+    changed = false
+    for (let i = 0; i < k; i += 1) {
+      if (flags[i]) continue
+      let l = i - 1
+      while (l >= 0 && !flags[l]) l -= 1
+      let r = i + 1
+      while (r < k && !flags[r]) r += 1
+      const card = state.timeline[i]!
+      const okLeft = l < 0 || card.year >= state.timeline[l]!.year
+      const okRight = r >= k || card.year <= state.timeline[r]!.year
+      if (okLeft && okRight) {
+        flags[i] = true
+        changed = true
+      }
+    }
+  }
+  return flags
 }
 
 /**
- * 提交判定：手牌清空后才允许。相对邻居有序的卡锁定在轴上，其余回手并
- * 附提示（就近参照锁定卡：年份小于左侧锁定卡 → 更早，大于右侧锁定卡 →
- * 更晚；两侧都无锁定卡时退回与锚点比较）。错误张数计入 errors。
+ * 提交判定：手牌清空后才允许。以锚点为基准做不动点锁定（见
+ * computeLockedFlags），有序卡锁定在轴上，其余回手并附提示：就近参照
+ * 最近的锁定卡（或锚点），年份小于左侧最近锁定卡 → 更早（应放其左
+ * 侧），大于右侧最近锁定卡 → 更晚；两侧都无锁定卡时退回与锚点比较。
+ * 提示方向与比较结果恒一致：direction 为 earlier 当且仅当卡应放在参照
+ * 卡左侧。错误张数计入 errors。
  * @returns 判定结果；未在 playing 或手牌未清空时返回 null（不改变状态）。
  */
 export function submitRound(state: TimelineState): JudgeResult | null {
   if (state.phase !== 'playing' || state.hand.length > 0) return null
   const k = state.timeline.length
-  const lockedFlag: boolean[] = []
-  for (let i = 0; i < k; i += 1) lockedFlag.push(isLockedAt(state, i))
+  const lockedFlag: boolean[] = computeLockedFlags(state)
   const wrong: TimelineEvent[] = []
   const locked: TimelineEvent[] = []
   const hints: Hint[] = []

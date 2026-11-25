@@ -12,6 +12,7 @@ import {
   type DungeonView,
   type SlotKind,
 } from '../src/client/games/dicedungeon/logic.ts'
+import { wrapTextByMeasure } from '../src/client/games/dicedungeon/render.ts'
 
 /** 打到当前层敌人死亡（全攻击），返回进入下一状态后的视图。 */
 function autoKill(engine: DungeonEngine, maxTurns = 40): DungeonView {
@@ -291,6 +292,37 @@ describe('dicedungeon logic', () => {
     expect(last.phase).toBe('victory')
     expect(last.floor).toBe(MAX_FLOOR)
     expect(engine.score()).toBeGreaterThan(0)
+  })
+
+  it('强化卡 desc 折行：固定字宽桩下最多两行且各不超宽', () => {
+    // 桩字体：CJK 与全角标点 12px、ASCII 6px（保守近似 system-ui 12px）。
+    const width = (s: string): number =>
+      [...s].reduce((w, ch) => w + (ch.charCodeAt(0) > 0xff ? 12 : 6), 0)
+    const descs = [
+      '立刻回复 10 点生命',
+      '每回合掷 3 颗骰子',
+      '每回合掷 4 颗骰子',
+      '灼烧 3/层，吸血 +1',
+      '灼烧 4/层，吸血 +3',
+      '护盾上限 +3，并立刻获得 3 点护盾',
+    ]
+    for (const desc of descs) {
+      const lines = wrapTextByMeasure(desc, 154, width, 2)
+      expect(lines.length).toBeLessThanOrEqual(2)
+      expect(lines.length).toBeGreaterThan(0)
+      for (const line of lines) expect(width(line)).toBeLessThanOrEqual(154)
+    }
+    // 长文案必须真的折成两行（而不是被截断丢失内容）。
+    const two = wrapTextByMeasure('护盾上限 +3，并立刻获得 3 点护盾', 154, width, 2)
+    expect(two).toHaveLength(2)
+    expect(two.join('')).toBe('护盾上限 +3，并立刻获得 3 点护盾')
+    // maxLines=1 时截断加省略号且不超宽。
+    const one = wrapTextByMeasure('护盾上限 +3，并立刻获得 3 点护盾', 154, width, 1)
+    expect(one).toHaveLength(1)
+    expect(one[0]!.endsWith('…')).toBe(true)
+    expect(width(one[0]!)).toBeLessThanOrEqual(154)
+    // 空文案至少返回一行空串。
+    expect(wrapTextByMeasure('', 154, width, 2)).toEqual([''])
   })
 
   it('整塔重放：同种子同策略两次逐步视图完全一致', () => {

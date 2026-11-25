@@ -1,7 +1,7 @@
 /**
  * 时间线 Timeline 纯逻辑：内置 66 张事件卡题库（科技/历史/文化）、按注入
  * seed 发牌（mulberry32，锚点取年份中位卡）、插入/交换/收回操作、提交
- * 判定（相对邻居正确即锁定，错误卡回手并附「比 X 更早/更晚」提示）、
+ * 判定（锚点基准不动点锁定，错误卡回手并附「比 X 更早/更晚」提示）、
  * 错误计分与关卡限时。无 DOM、无副作用，全部确定性可测：同 level+seed
  * 重放完全一致，供 tests/timeline-logic.spec.ts 与渲染层共用。
  */
@@ -80,9 +80,12 @@ export declare function swapPlaced(state: TimelineState, i: number, j: number): 
 /** 把一张已放置（非锚点）卡收回手牌。 */
 export declare function returnToHand(state: TimelineState, pos: number): boolean;
 /**
- * 提交判定：手牌清空后才允许。相对邻居有序的卡锁定在轴上，其余回手并
- * 附提示（就近参照锁定卡：年份小于左侧锁定卡 → 更早，大于右侧锁定卡 →
- * 更晚；两侧都无锁定卡时退回与锚点比较）。错误张数计入 errors。
+ * 提交判定：手牌清空后才允许。以锚点为基准做不动点锁定（见
+ * computeLockedFlags），有序卡锁定在轴上，其余回手并附提示：就近参照
+ * 最近的锁定卡（或锚点），年份小于左侧最近锁定卡 → 更早（应放其左
+ * 侧），大于右侧最近锁定卡 → 更晚；两侧都无锁定卡时退回与锚点比较。
+ * 提示方向与比较结果恒一致：direction 为 earlier 当且仅当卡应放在参照
+ * 卡左侧。错误张数计入 errors。
  * @returns 判定结果；未在 playing 或手牌未清空时返回 null（不改变状态）。
  */
 export declare function submitRound(state: TimelineState): JudgeResult | null;

@@ -24,11 +24,17 @@ export interface LudoView {
     state: LudoState;
     /** 玩家当前可动的飞机编号（高亮 + 命中）。 */
     movable: number[];
+    /** 开局人数选择中（未选 2/3/4 前不进入对局）。 */
+    setup: boolean;
+    /** 悬停预览：待行子阶段鼠标悬停的可动飞机编号（无则 null）。 */
+    hoverPiece: number | null;
+    /** 悬停飞机的预览落点位置编码（hoverPiece 非空时有效）。 */
+    hoverTo: number | null;
     /** 骰子滚动中。 */
     rolling: boolean;
     /** 滚动动画当前显示面。 */
     rollingFace: number;
-    /** 最近捕获（跑道绝对下标 + 触发时刻），驱动回程幽灵动画。 */
+    /** 最近捕获（跑道绝对下标 + 触发时刻 + 受害方），驱动回程幽灵动画。 */
     capture: {
         cells: number[];
         at: number;
@@ -44,6 +50,13 @@ export declare function rollButtonAt(x: number, y: number): boolean;
 /** 说明按钮是否被点中。 */
 export declare function helpButtonAt(x: number, y: number): boolean;
 /**
+ * 开局人数按钮命中检测。
+ * @param x - 逻辑横坐标。
+ * @param y - 逻辑纵坐标。
+ * @returns 命中的人数（2/3/4），未命中返回 null。
+ */
+export declare function setupButtonAt(x: number, y: number): number | null;
+/**
  * 命中检测：玩家可动飞机中距 (x,y) 最近且在 20px 内的编号。
  * @param state - 当前比赛状态。
  * @param movable - 可动飞机编号列表。
@@ -53,8 +66,9 @@ export declare function helpButtonAt(x: number, y: number): boolean;
  */
 export declare function planeAt(state: LudoState, movable: number[], x: number, y: number): number | null;
 /**
- * 整帧渲染：背景 → 盘面 → 棋子 → 回程幽灵 → HUD → 底部提示 → 暂停/
- * 胜负 overlay → 说明按钮 → 帮助面板（最后两步永远最上层）。
+ * 整帧渲染：背景 → 盘面 → 棋子 → 悬停预览 → 回程幽灵 → HUD → 底部
+ * 提示 → 暂停/胜负 overlay → 开局人数选择 overlay → 说明按钮 → 帮助
+ * 面板（最后两步永远最上层）。
  * @param ctx - 已按逻辑坐标变换的 2d 上下文。
  * @param view - 本帧视图快照。
  */

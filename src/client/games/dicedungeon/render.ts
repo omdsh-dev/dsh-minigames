@@ -34,6 +34,46 @@ const UPG_H = 168
 const UPG_GAP = 20
 const UPG_Y = 116
 
+/**
+ * 按实测宽度把文案贪心折成最多 maxLines 行（CJK 友好：逐字断行，
+ * 不依赖空格）。渲染层用 ctx.measureText 做宽度函数，测试可用
+ * 固定字宽桩验证断行逻辑。超过 maxLines 时末行截断加省略号。
+ * @param text 待折行文案
+ * @param maxWidth 单行最大宽度（px，含省略号占用）
+ * @param measureWidth 以目标字体测量字符串宽度的函数
+ * @param maxLines 最大行数（至少 1）
+ * @returns 折行结果（至少 1 行，均不超过 maxWidth，除非单个字形本身超宽）
+ */
+export function wrapTextByMeasure(
+  text: string,
+  maxWidth: number,
+  measureWidth: (s: string) => number,
+  maxLines = 2,
+): string[] {
+  const lines: string[] = []
+  let current = ''
+  const flush = (): void => {
+    lines.push(current)
+    current = ''
+  }
+  for (const ch of text) {
+    const next = current + ch
+    if (measureWidth(next) > maxWidth && current !== '' && lines.length < maxLines - 1) {
+      flush()
+      current = ch
+      continue
+    }
+    current = next
+  }
+  if (current !== '' || lines.length === 0) flush()
+  if (lines.length > maxLines) lines.length = maxLines
+  // 末行仍超宽（maxLines=1 或极端长词）时按字形截断加省略号（预留省略号宽度）。
+  let last = lines[lines.length - 1]!
+  while (measureWidth(last + '…') > maxWidth && last.length > 1) last = last.slice(0, -1)
+  if (last !== lines[lines.length - 1]) lines[lines.length - 1] = last + '…'
+  return lines
+}
+
 /** 槽的展示元数据（顺序即渲染顺序）。 */
 const SLOT_META: Record<SlotKind, { title: string; hint: string; color: string }> = {
   attack: { title: '⚔ 攻击', hint: '造成等值伤害', color: accent(4) },
@@ -144,14 +184,14 @@ function drawEnemy(ctx: CanvasRenderingContext2D, v: DungeonView): void {
   ctx.font = '600 11px system-ui, sans-serif'
   ctx.fillStyle = THEME.textMuted
   ctx.fillText(String(Math.max(0, v.enemy.hp)) + ' / ' + String(v.enemy.maxHp), x + w / 2, barY + 26)
-  // 灼烧图标（左上角）。
+  // 灼烧图标（底部独立行，与首行意图文案不同行，杜绝横向挤撞）。
   if (v.enemy.burn > 0) {
     ctx.font = '13px system-ui, sans-serif'
     ctx.textAlign = 'left'
     ctx.fillStyle = THEME.gold
-    ctx.fillText('灼烧×' + String(v.enemy.burn), x + 12, y + 20)
+    ctx.fillText('灼烧×' + String(v.enemy.burn), x + 12, y + h - 10)
   }
-  // 意图文案（右对齐避让灼烧图标）。
+  // 意图文案（首行右对齐；灼烧已移到底部独立行，两者不再同行）。
   ctx.font = '600 12px system-ui, sans-serif'
   ctx.textAlign = 'right'
   ctx.fillStyle = v.enemy.charging ? THEME.bad : THEME.textMuted
@@ -294,9 +334,14 @@ export function renderDiceDungeon(
       ctx.font = 'bold 17px system-ui, sans-serif'
       ctx.fillStyle = accent(i)
       ctx.fillText(card.title, r.x + r.w / 2, r.y + 44)
-      ctx.font = '600 13px system-ui, sans-serif'
+      // desc 12px 最多两行自动折行（内容宽 154px，卡片高 168 足够容纳）。
+      ctx.font = '600 12px system-ui, sans-serif'
       ctx.fillStyle = THEME.textMuted
-      ctx.fillText(card.desc, r.x + r.w / 2, r.y + 76)
+      const descLines = wrapTextByMeasure(card.desc, r.w - 16, s => ctx.measureText(s).width, 2)
+      const firstY = descLines.length === 1 ? r.y + 76 : r.y + 72
+      descLines.forEach((line, li) => {
+        ctx.fillText(line, r.x + r.w / 2, firstY + li * 18)
+      })
     })
   } else {
     drawHud(ctx, v)
