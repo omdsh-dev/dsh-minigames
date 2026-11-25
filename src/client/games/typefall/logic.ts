@@ -138,17 +138,17 @@ export interface TypeFallState {
 
 /** 基础下落速度（px/s）：随关卡与词序渐增。 */
 export function letterSpeed(level: number, wordIndex: number): number {
-  return 62 + level * 17 + wordIndex * 3
+  return 85 + level * 24 + wordIndex * 4
 }
 
 /** 目标字母生成间隔（ms）：随关卡缩短。 */
 export function spawnDelayMs(level: number): number {
-  return Math.max(320, 850 - level * 95)
+  return Math.max(240, 620 - level * 110)
 }
 
 /** 干扰字母生成间隔（ms）；关卡 0（第 1 关）不生成干扰。 */
 export function decoyIntervalMs(level: number): number {
-  return Math.max(700, 2300 - level * 380)
+  return Math.max(560, 1700 - level * 430)
 }
 
 /** 从池中不放回抽取 n 个词（种子随机）。 */
