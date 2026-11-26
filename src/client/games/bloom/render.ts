@@ -114,9 +114,14 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
     ctx.fill()
     return
   }
-  if (faded) ctx.globalAlpha = 0.45
-  else glow(ctx, color, 8)
-  ctx.fillStyle = color
+  // 定格花改为淡奶油色（与任何花苞色都拉开色相差异，而非仅透明度）。
+  if (faded) {
+    ctx.globalAlpha = 0.9
+    ctx.fillStyle = '#d9d2c0'
+  } else {
+    glow(ctx, color, 8)
+    ctx.fillStyle = color
+  }
   for (let k = 0; k < 5; k += 1) {
     const a = spin + (k * Math.PI * 2) / 5
     ctx.beginPath()
@@ -124,7 +129,8 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
     ctx.fill()
   }
   noGlow(ctx)
-  ctx.globalAlpha = 0.8
+  ctx.globalAlpha = faded ? 0.65 : 0.8
+  ctx.fillStyle = faded ? '#efeae0' : color
   for (let k = 0; k < 5; k += 1) {
     const a = spin + Math.PI / 5 + (k * Math.PI * 2) / 5
     ctx.beginPath()
@@ -143,8 +149,9 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
 
 /** 画一个花苞：发光圆点 + 高光；悬停时描白圈。 */
 function drawBud(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string, emphasized: boolean): void {
-  const r = CELL * 0.2
-  glow(ctx, color, emphasized ? 12 : 5)
+  // 花苞放大 + 常态辉光增强：未点目标要压过淡色定格花。
+  const r = CELL * 0.28
+  glow(ctx, color, emphasized ? 14 : 9)
   ctx.fillStyle = color
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
