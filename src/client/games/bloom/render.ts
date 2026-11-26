@@ -138,10 +138,12 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
     ctx.fill()
   }
   ctx.globalAlpha = 1
-  ctx.fillStyle = faded ? '#9c8d6b' : THEME.gold
+  // 定格花芯：保留原色相的小色点（奶油花瓣会抹掉颜色信息——开局 5 朵
+  // 初始花全变同色奶油的根因），金芯仅动画/新开时用。
+  ctx.fillStyle = faded ? color : THEME.gold
   if (!faded) glow(ctx, THEME.gold, 4)
   ctx.beginPath()
-  ctx.arc(cx, cy, Math.max(1.5, r * 0.16), 0, Math.PI * 2)
+  ctx.arc(cx, cy, Math.max(1.5, r * (faded ? 0.22 : 0.16)), 0, Math.PI * 2)
   ctx.fill()
   if (!faded) noGlow(ctx)
   ctx.globalAlpha = 1
