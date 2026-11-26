@@ -259,18 +259,19 @@ export function renderBloom(
       continue
     }
     const layer = animMap.get(i)
-    if (layer !== undefined && view.anim !== null && view.anim.t < layer * LAYER_S) {
+    // 真根因修复：初版起 dispatch 缺 kind 分支——未点击的花苞静止时被
+    // drawFlower(age=1) 画成完全绽放的花（「分不清哪些开了」的真正源头，
+    // 此前四轮样式修改都在治标）。正确的状态机：
+    //   bud（未点）→ 永远画花苞圆点；
+    //   bloom + 本次连锁未到点 → 花苞（视觉延迟）；
+    //   bloom + 连锁展开中 → 全色花（动画）；
+    //   bloom + 不在本次连锁（此前点击/初始）→ 灰砖 ✓（定格）。
+    if (cell.kind === 'bud') {
       drawBud(ctx, p.x, p.y, accent(cell.color), playing && (view.hoverIndex === i || view.cursorIndex === i))
       continue
     }
-    let age = 1
-    if (layer !== undefined && view.anim !== null) {
-      age = (view.anim.t - layer * LAYER_S) / OPEN_S
-    }
-    const settled = layer === undefined
-    if (settled) {
-      // 定格已开：深灰圆角砖 + 白色 ✓——符号级差异（前几轮透明度/换色
-      // 花瓣仍与花苞混淆）；彩色=要点的，灰砖打勾=完成的。
+    if (layer === undefined) {
+      // 定格已开：深灰圆角砖 + 白色 ✓（符号级差异）。
       roundRectPath(ctx, x + 6, y + 6, CELL - 12, CELL - 12, 9)
       ctx.fillStyle = '#2e2e3c'
       ctx.fill()
@@ -288,6 +289,12 @@ export function renderBloom(
       ctx.stroke()
       continue
     }
+    if (view.anim !== null && view.anim.t < layer * LAYER_S) {
+      // 本次连锁尚未到该格的绽放时刻：仍画花苞。
+      drawBud(ctx, p.x, p.y, accent(cell.color), playing && (view.hoverIndex === i || view.cursorIndex === i))
+      continue
+    }
+    const age = view.anim === null ? 1 : (view.anim.t - layer * LAYER_S) / OPEN_S
     drawFlower(ctx, p.x, p.y, accent(cell.color), age, petalSpin(i))
     if (playing && (view.hoverIndex === i || view.cursorIndex === i)) {
       ctx.strokeStyle = THEME.text
