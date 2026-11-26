@@ -268,7 +268,27 @@ export function renderBloom(
       age = (view.anim.t - layer * LAYER_S) / OPEN_S
     }
     const settled = layer === undefined
-    drawFlower(ctx, p.x, p.y, accent(cell.color), age, petalSpin(i), settled)
+    if (settled) {
+      // 定格已开：深灰圆角砖 + 白色 ✓——符号级差异（前几轮透明度/换色
+      // 花瓣仍与花苞混淆）；彩色=要点的，灰砖打勾=完成的。
+      roundRectPath(ctx, x + 6, y + 6, CELL - 12, CELL - 12, 9)
+      ctx.fillStyle = '#2e2e3c'
+      ctx.fill()
+      ctx.strokeStyle = '#45455a'
+      ctx.lineWidth = 1
+      ctx.stroke()
+      ctx.strokeStyle = '#8f8fa6'
+      ctx.lineWidth = 3
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      ctx.moveTo(p.x - 8, p.y)
+      ctx.lineTo(p.x - 2, p.y + 7)
+      ctx.lineTo(p.x + 9, p.y - 7)
+      ctx.stroke()
+      continue
+    }
+    drawFlower(ctx, p.x, p.y, accent(cell.color), age, petalSpin(i))
     if (playing && (view.hoverIndex === i || view.cursorIndex === i)) {
       ctx.strokeStyle = THEME.text
       ctx.lineWidth = 1.5
