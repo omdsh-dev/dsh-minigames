@@ -207,6 +207,7 @@ export function renderBloom(
   const clicksColor = state.clicksLeft <= 2 ? THEME.bad : THEME.text
   hudPair(ctx, 170, 26, '点击', String(Math.max(0, state.clicksLeft)), 'left', clicksColor)
   hudPair(ctx, 285, 26, '花苞', String(countBuds(state.grid)))
+  hudPair(ctx, LOGICAL_W - 140, 26, '点击', String(Math.max(0, state.clicksLeft)), 'right', state.clicksLeft <= 1 ? THEME.bad : THEME.text)
   hudPair(ctx, LOGICAL_W - 24, 26, '分数', String(state.score), 'right', THEME.gold)
   ctx.font = '600 13px system-ui, sans-serif'
   ctx.textAlign = 'center'

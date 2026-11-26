@@ -212,18 +212,24 @@ function createBloomGame(host: HTMLElement, options?: MiniGameMountOptions): Min
   }
 
   const loop = createFrameLoop((f) => {
-    if (anim !== null) {
-      anim.t += f.dt
-      let maxLayer = 0
-      for (const s of anim.steps) {
-        if (s.layer > maxLayer) maxLayer = s.layer
+    // 渲染异常冒泡会杀死 rAF 链（画面冻结、点击无响应、无结算遮罩）——
+    // 包一层让异常可见且不吞掉循环：抛错也继续调度下一帧。
+    try {
+      if (anim !== null) {
+        anim.t += f.dt
+        let maxLayer = 0
+        for (const s of anim.steps) {
+          if (s.layer > maxLayer) maxLayer = s.layer
+        }
+        if (anim.t >= maxLayer * LAYER_S + 1.6) anim = null
       }
-      if (anim.t >= maxLayer * LAYER_S + 1.6) anim = null
-    }
-    const animating = anim !== null || particles.size() > 0
-    if (f.render || animating) {
-      renderBloom(ctx, state, view(), particles, f.dt * 1000)
-      if (animating) loop.markDirty()
+      const animating = anim !== null || particles.size() > 0
+      if (f.render || animating) {
+        renderBloom(ctx, state, view(), particles, f.dt * 1000)
+        if (animating) loop.markDirty()
+      }
+    } catch (e) {
+      console.error('[dsh-minigames/bloom] frame error:', e)
     }
   }, { mode: 'dirty' })
 
