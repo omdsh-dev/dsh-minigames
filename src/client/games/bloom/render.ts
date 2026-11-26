@@ -101,8 +101,10 @@ function easeOutBack(t: number): number {
   return 1 + c3 * u * u * u + c1 * u * u
 }
 
-/** 画一朵绽放的花：外层 5 瓣 + 内层错开 5 瓣 + 金色花芯。 */
-function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string, age: number, spin: number): void {
+/** 画一朵绽放的花：外层 5 瓣 + 内层错开 5 瓣 + 金色花芯。
+ * faded：已定格的旧花——半透明无辉光，与全色发光的花苞拉开视觉层次
+ * （原先两者同色同亮，「还得一个个点过去」分不清哪些没点）。 */
+function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string, age: number, spin: number, faded = false): void {
   const grow = age >= 1 ? 1 : easeOutBack(Math.max(0, Math.min(1, age)))
   const r = CELL * 0.46 * grow
   if (r < 2) {
@@ -112,7 +114,8 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
     ctx.fill()
     return
   }
-  glow(ctx, color, 8)
+  if (faded) ctx.globalAlpha = 0.45
+  else glow(ctx, color, 8)
   ctx.fillStyle = color
   for (let k = 0; k < 5; k += 1) {
     const a = spin + (k * Math.PI * 2) / 5
@@ -129,12 +132,13 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
     ctx.fill()
   }
   ctx.globalAlpha = 1
-  ctx.fillStyle = THEME.gold
-  glow(ctx, THEME.gold, 4)
+  ctx.fillStyle = faded ? '#9c8d6b' : THEME.gold
+  if (!faded) glow(ctx, THEME.gold, 4)
   ctx.beginPath()
   ctx.arc(cx, cy, Math.max(1.5, r * 0.16), 0, Math.PI * 2)
   ctx.fill()
-  noGlow(ctx)
+  if (!faded) noGlow(ctx)
+  ctx.globalAlpha = 1
 }
 
 /** 画一个花苞：发光圆点 + 高光；悬停时描白圈。 */
@@ -253,7 +257,8 @@ export function renderBloom(
     if (layer !== undefined && view.anim !== null) {
       age = (view.anim.t - layer * LAYER_S) / OPEN_S
     }
-    drawFlower(ctx, p.x, p.y, accent(cell.color), age, petalSpin(i))
+    const settled = layer === undefined
+    drawFlower(ctx, p.x, p.y, accent(cell.color), age, petalSpin(i), settled)
     if (playing && (view.hoverIndex === i || view.cursorIndex === i)) {
       ctx.strokeStyle = THEME.text
       ctx.lineWidth = 1.5
