@@ -149,16 +149,17 @@ function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, color
 
 /** 画一个花苞：发光圆点 + 高光；悬停时描白圈。 */
 function drawBud(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string, emphasized: boolean): void {
-  // 花苞放大 + 常态辉光增强：未点目标要压过淡色定格花。
+  // 花苞：实心色盘 + 低辉光——高辉光会把小色点的色相差晕成一片（开局
+  // 颜色分不清的根因）；实心填充+对比描边让色相清晰可辨。
   const r = CELL * 0.28
-  glow(ctx, color, emphasized ? 14 : 9)
+  glow(ctx, color, emphasized ? 12 : 4)
   ctx.fillStyle = color
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.fill()
   noGlow(ctx)
-  ctx.strokeStyle = emphasized ? THEME.text : 'rgba(226,226,238,0.35)'
-  ctx.lineWidth = emphasized ? 2 : 1
+  ctx.strokeStyle = emphasized ? THEME.text : 'rgba(15,15,22,0.85)'
+  ctx.lineWidth = emphasized ? 2.5 : 2
   ctx.stroke()
   ctx.fillStyle = 'rgba(255,255,255,0.35)'
   ctx.beginPath()
