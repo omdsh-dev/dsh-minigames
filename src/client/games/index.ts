@@ -237,7 +237,6 @@ import { screwsortGame } from './screwsort/index.ts'
 import { bloomGame } from './bloom/index.ts'
 import { typefallGame } from './typefall/index.ts'
 import { rotationGame } from './rotation/index.ts'
-import { hivemindGame } from './hivemind/index.ts'
 import { lamplightGame } from './lamplight/index.ts'
 import { towerbuildGame } from './towerbuild/index.ts'
 import { cipherwheelGame } from './cipherwheel/index.ts'
@@ -330,7 +329,7 @@ export function registerBuiltinGames(): void {
     trailmemoryGame, draughtsGame, planarityGame, banqiGame,
     dicedungeonGame, pixelpainterGame, timelineGame, ludoGame,
     screwsortGame, bloomGame, typefallGame, rotationGame,
-    hivemindGame, lamplightGame, towerbuildGame, cipherwheelGame,
+    lamplightGame, towerbuildGame, cipherwheelGame,
     gardenpathGame, dolphindiveGame, dominoshuffleGame, cloudseedsGame,
   ]) {
     if (getGame(game.id) === undefined) registerGame(game)
