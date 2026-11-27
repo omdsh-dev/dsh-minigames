@@ -26,6 +26,8 @@ function createOrigamiFoldGame(host: HTMLElement, options?: MiniGameMountOptions
 
   let level = 0
   let state: FoldState = freshLevel(0, 0)
+  /** 折叠历史（供 Z 回退一步；重开/换关时清空）。 */
+  let history: FoldState[] = []
   let running = false
   let helpOpen = false
   let hover: FoldMove | null = null
@@ -48,6 +50,7 @@ function createOrigamiFoldGame(host: HTMLElement, options?: MiniGameMountOptions
   const startLevel = (next: number, carryScore: number): void => {
     level = next
     state = freshLevel(next, carryScore)
+    history = []
     winText = null
     hover = null
     anim = null
@@ -96,6 +99,7 @@ function createOrigamiFoldGame(host: HTMLElement, options?: MiniGameMountOptions
     if (state.status !== 'playing' || anim !== null) return
     const next = applyFold(state, move)
     if (next === null) return
+    history.push(state)
     anim = { move, oldRows: state.rows, oldCols: state.cols, oldCells: state.cells, t: 0 }
     state = next
     reportScore()
@@ -152,9 +156,23 @@ function createOrigamiFoldGame(host: HTMLElement, options?: MiniGameMountOptions
     }
   }
 
+  /** Z：回退一步折叠（不可跨关；动画中/胜负结算后不可退）。 */
+  const undoFold = (): void => {
+    if (anim !== null || state.status !== 'playing') return
+    const prev = history.pop()
+    if (prev === undefined) return
+    state = prev
+    winText = null
+    repaint()
+  }
+
   const onKeyDown = (event: KeyboardEvent): void => {
     if (!gameHasFocus(host)) return
     switch (event.code) {
+      case 'KeyZ':
+        event.preventDefault()
+        undoFold()
+        return
       case 'KeyR':
         event.preventDefault()
         startLevel(level, 0)
@@ -248,7 +266,7 @@ export const origamifoldGame: MiniGameDefinition = {
   description: '横折竖折层叠出目标图案——每折一次，纸的层数就翻一倍。',
   controls: [
     '点击折线附近折纸（点哪侧、哪侧折过去盖住另一侧）',
-    'R：重开 · P：暂停 · H / 右下角：说明',
+    'Z：回退一步 · R：重开 · P：暂停 · H / 右下角：说明',
   ],
   create: createOrigamiFoldGame,
 }
