@@ -130,12 +130,17 @@ function createHiveMindGame(host: HTMLElement, options?: MiniGameMountOptions): 
 
   const frame = (f: FrameInfo): void => {
     if (!running) return
-    // 暂停或帮助面板打开时不推进模拟（帮助可安心阅读）。
-    if (!paused && !isHelpOpen() && state.status === 'playing') {
-      stepHiveMind(state, f.dt * 1000)
-      reportScore()
+    // 渲染异常会杀死 rAF 链（画面永久冻结）——包一层：报错入控制台但不吞循环。
+    try {
+      // 暂停或帮助面板打开时不推进模拟（帮助可安心阅读）。
+      if (!paused && !isHelpOpen() && state.status === 'playing') {
+        stepHiveMind(state, f.dt * 1000)
+        reportScore()
+      }
+      renderHiveMind(ctx, state, { paused, showLinks, dtMs: f.dt * 1000 })
+    } catch (e) {
+      console.error('[dsh-minigames/hivemind] frame error:', e)
     }
-    renderHiveMind(ctx, state, { paused, showLinks, dtMs: f.dt * 1000 })
   }
 
   const loop = createFrameLoop(frame, { mode: 'continuous' })
@@ -162,6 +167,9 @@ function createHiveMindGame(host: HTMLElement, options?: MiniGameMountOptions): 
   canvas.addEventListener('pointercancel', onPointerUp)
   window.addEventListener('keydown', onKeyDown)
   focusGameHost(host)
+  // 挂载即先渲染一帧：不依赖 rAF 首帧（黑屏排查——若首帧可见而后续不刷新，
+  // 则问题在帧循环；若连首帧都黑，问题在渲染本体）。
+  renderHiveMind(ctx, state, { paused: false, showLinks, dtMs: 0 })
   running = true
   loop.start()
   loop.markDirty()
