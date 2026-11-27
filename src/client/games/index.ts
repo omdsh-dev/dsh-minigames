@@ -244,6 +244,10 @@ import { gardenpathGame } from './gardenpath/index.ts'
 import { dolphindiveGame } from './dolphindive/index.ts'
 import { dominoshuffleGame } from './dominoshuffle/index.ts'
 import { cloudseedsGame } from './cloudseeds/index.ts'
+import { origamifoldGame } from './origamifold/index.ts'
+import { celllifeGame } from './celllife/index.ts'
+import { sonardeductGame } from './sonardeduct/index.ts'
+import { orbitdockGame } from './orbitdock/index.ts'
 import { masyuGame } from './masyu/index.ts'
 import { blackjackGame } from './blackjack/index.ts'
 import { flooditGame } from './floodit/index.ts'
@@ -331,6 +335,7 @@ export function registerBuiltinGames(): void {
     screwsortGame, bloomGame, typefallGame, rotationGame,
     lamplightGame, towerbuildGame, cipherwheelGame,
     gardenpathGame, dolphindiveGame, dominoshuffleGame, cloudseedsGame,
+    origamifoldGame, celllifeGame, sonardeductGame, orbitdockGame,
   ]) {
     if (getGame(game.id) === undefined) registerGame(game)
   }
