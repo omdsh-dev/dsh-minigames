@@ -225,6 +225,60 @@ function bfsDist(state: { cols: number; rows: number; walls: Uint8Array }, sx: n
  * @param level 1 起的关卡号（决定递进配置）。
  * @returns 初始局面（status 恒为 playing）。
  */
+/** 广度优先距离场（沿可走街道，四向）。 */
+function bfsField(walls: Uint8Array, cols: number, rows: number, from: { x: number; y: number }): Int32Array {
+  const dist = new Int32Array(cols * rows).fill(-1)
+  const queue: number[] = [from.y * cols + from.x]
+  dist[from.y * cols + from.x] = 0
+  for (let qi = 0; qi < queue.length; qi += 1) {
+    const cur = queue[qi]!
+    const d = dist[cur]! ?? 0
+    const x = cur % cols
+    const y = Math.floor(cur / cols)
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx
+      const ny = y + dy
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue
+      const ni = ny * cols + nx
+      if (walls[ni] === 1 || dist[ni] !== -1) continue
+      dist[ni] = d + 1
+      queue.push(ni)
+    }
+  }
+  return dist
+}
+
+/**
+ * 贪心路线步数：从起点出发，每步走到「最近的未点亮路灯」，直到全部走完。
+ * 真实最优巡回的可行上界（贪心 ≥ 最优），作油量预算下界。
+ * @param walls - 行主序地形。
+ * @param cols - 列数。
+ * @param rows - 行数。
+ * @param start - 玩家起点。
+ * @param lamps - 路灯数组。
+ * @returns 贪心路线总步数（有灯不可达时返回 Infinity）。
+ */
+function greedyRouteSteps(walls: Uint8Array, cols: number, rows: number, start: { x: number; y: number }, lamps: Lamp[]): number {
+  let cur = start
+  let total = 0
+  const remaining = lamps.map((l) => ({ x: l.x, y: l.y }))
+  while (remaining.length > 0) {
+    const field = bfsField(walls, cols, rows, cur)
+    let bestIdx = -1
+    let bestD = Infinity
+    for (let k = 0; k < remaining.length; k += 1) {
+      const d = field[remaining[k]!.y * cols + remaining[k]!.x] ?? -1
+      if (d === -1) continue
+      if (d < bestD) { bestD = d; bestIdx = k }
+    }
+    if (bestIdx === -1) return Infinity
+    total += bestD
+    cur = remaining[bestIdx]!
+    remaining.splice(bestIdx, 1)
+  }
+  return total
+}
+
 export function generateTown(seed: number, level: number): LamplightState {
   const cfg = levelConfig(level)
   const n = cfg.cols * cfg.rows
@@ -342,6 +396,10 @@ export function generateTown(seed: number, level: number): LamplightState {
     break // 满足全部约束：采用这张地形。
   }
 
+  // 油量按可玩性动态定：从起点贪心最近灯逐盏走完整条路线所需步数为
+  // 下界，加 6 步余量（油瓶另算奖励）——固定值 12/16 在大镇上数学不可赢
+  // （实测 4 盏灯路线 25-30 步）。
+  const oilBudget = Math.max(cfg.oil, greedyRouteSteps(walls, cfg.cols, cfg.rows, start, lamps) + 6)
   const state: LamplightState = {
     level,
     cols: cfg.cols,
@@ -351,8 +409,8 @@ export function generateTown(seed: number, level: number): LamplightState {
     bottles,
     shadows,
     player: { x: start.x, y: start.y },
-    oil: cfg.oil,
-    oilStart: cfg.oil,
+    oil: oilBudget,
+    oilStart: oilBudget,
     moves: 0,
     litOrder: [],
     seen: new Uint8Array(n),

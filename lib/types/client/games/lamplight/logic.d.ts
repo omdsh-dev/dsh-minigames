@@ -115,15 +115,6 @@ export declare function isWall(state: LamplightState, x: number, y: number): boo
  * @returns true 表示该格处于光照中。
  */
 export declare function isLit(state: LamplightState, x: number, y: number): boolean;
-/**
- * 生成某一关的小镇：建筑、路灯、油瓶、暗影全部由 seed 决定。
- * 生成后保证：起点到每盏路灯、每个油瓶、每只暗影 BFS 可达；
- * 路灯两两曼哈顿距离 ≥ 4（足够分散）；暗影离起点 BFS ≥ 6 步。
- * 重试 GEN_ATTEMPTS 次仍不满足则清空建筑兜底（必可达）。
- * @param seed 确定性 RNG 种子（同 seed 同 level → 同小镇）。
- * @param level 1 起的关卡号（决定递进配置）。
- * @returns 初始局面（status 恒为 playing）。
- */
 export declare function generateTown(seed: number, level: number): LamplightState;
 /**
  * 玩家朝 dir 走一步（若可行）。一次成功移动依次结算：
