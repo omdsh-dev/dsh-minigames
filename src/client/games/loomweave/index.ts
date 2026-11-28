@@ -7,7 +7,7 @@
  * 帧回调 try-catch 包裹（渲染异常只记录不中断 rAF 链）。
  */
 import type { MiniGameDefinition, MiniGameInstance, MiniGameMountOptions } from '../types.ts'
-import { buildLevel, clothColors, computeError, computeScore, LEVEL_COUNT, newGame, resetLevel, undoRow, weaveRow, type GameState, type RowChoice } from './logic.ts'
+import { bestRow, buildLevel, clothColors, computeError, computeScore, LEVEL_COUNT, newGame, resetLevel, undoRow, weaveRow, type GameState, type RowChoice } from './logic.ts'
 import { HELP_BTN, LOGICAL_H, LOGICAL_W, offsetFromPoint, renderScene, threadFromPoint, type SceneView } from './render.ts'
 import { fitCanvas } from '../canvas-fit.ts'
 import { focusGameHost, gameHasFocus } from '../focus.ts'
@@ -31,6 +31,8 @@ function createLoomWeaveGame(host: HTMLElement, options?: MiniGameMountOptions):
   /** 说明面板开关。 */
   let helpOpen = false
   let paused = false
+  /** H 提示剩余次数：自动按最优解织入下一行。 */
+  let hintsLeft = 2
   let scoredLevel = -1
 
   const initialFit = fitCanvas(host, canvas, LOGICAL_W, LOGICAL_H)
@@ -66,6 +68,7 @@ function createLoomWeaveGame(host: HTMLElement, options?: MiniGameMountOptions):
   const startLevel = (next: number): void => {
     level = Math.min(Math.max(next, 0), LEVEL_COUNT - 1)
     state = newGame(buildLevel(level, GAME_SEED))
+    hintsLeft = 2
     selectedColor = 0
     offset = 0
     paused = false
@@ -141,9 +144,25 @@ function createLoomWeaveGame(host: HTMLElement, options?: MiniGameMountOptions):
     }
   }
 
+  /** H 提示（2 次/关）：按已知最优解直接织入下一行（选色+偏移+织入一步到位）。 */
+  const applyHint = (): void => {
+    if (hintsLeft <= 0 || paused || state.phase !== 'play') return
+    const rowIndex = state.woven.length
+    if (rowIndex >= state.data.rows) return
+    const best = bestRow(state.data, rowIndex)
+    selectedColor = best.color
+    offset = best.offset
+    doWeave()
+    if (state.woven.length === rowIndex + 1) hintsLeft -= 1
+    loop.markDirty()
+  }
+
   const onKeyDown = (event: KeyboardEvent): void => {
     if (!gameHasFocus(host)) return
-    if (event.key === 'Enter') {
+    if (event.key === 'h' || event.key === 'H') {
+      event.preventDefault()
+      applyHint()
+    } else if (event.key === 'Enter') {
       event.preventDefault()
       doWeave()
     } else if (event.key === 'z' || event.key === 'Z') {
@@ -193,7 +212,7 @@ export const loomweaveGame: MiniGameDefinition = {
   description: '一行一行织过去——经线在哪个颜色上压过去，图案说了算。',
   controls: [
     '点色线篮选纬线色、点 0-3 偏移钮定穿梭序列，回车织入一行——完整规则点游戏内右下角「说明」',
-    'Z：拆一行 · R：重开 · P：暂停',
+    'Z：拆一行 · H：提示 · R：重开 · P：暂停',
   ],
   create: createLoomWeaveGame,
 }
