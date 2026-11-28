@@ -292,17 +292,31 @@ export function toggleMark(state: SonarDeductState, r: number, c: number): boole
   const idx = r * SIZE + c
   if (state.marks[idx] === 1) {
     state.marks[idx] = 0
-    state.message = ''
+    // 拔旗后旗数恰好等于障碍数时同样判定（超标多标后拔回 N 面、且全对
+    // 时应直接过关——原先只在插旗时判定，拔旗回到全对状态会永远卡住，
+    // 消息/状态与盘面不一致）。
+    judgeIfFull(state)
+    if (state.status === 'playing' && state.message !== '' && markCount(state) < obstacleCount(state)) state.message = ''
     return true
   }
   state.marks[idx] = 1
-  // 旗数允许超过障碍数（推测性多标；超过必错，提示后玩家自行拔旗）。
+  judgeIfFull(state)
+  return true
+}
+
+/**
+ * 旗数 ≥ 障碍数时判定：全对过关（加分、置 levelClear/allClear）；有错旗
+ * 不拔旗、不扣分——只把错旗数量写进 message（渲染层金色提示行），
+ * 玩家对照回声自行拔旗调整。旗数低于障碍数时清除提示。
+ * @param state - 对局状态（原地修改）。
+ */
+function judgeIfFull(state: SonarDeductState): void {
   const flags = markCount(state)
   const need = obstacleCount(state)
-  if (flags < need) return true
-  // 凑满自动判定：全对过关；有错旗不拔旗、不扣分——只提示错旗数量，
-  // 玩家对照回声自行调整（原实现错旗即拔，第三面旗标错瞬间消失，
-  // 用户无法发现错在哪，表现为「标不上」）。
+  if (flags < need) {
+    state.message = ''
+    return
+  }
   let wrongFlags = 0
   for (let i = 0; i < SIZE * SIZE; i += 1) {
     if (state.marks[i] !== 1 || state.obstacles[i] === 1) continue
@@ -312,10 +326,9 @@ export function toggleMark(state: SonarDeductState, r: number, c: number): boole
     state.score += winScore(state)
     state.status = state.level >= LEVEL_COUNT ? 'allClear' : 'levelClear'
     state.message = ''
-    return true
+    return
   }
   state.message = (flags > need ? '旗数超过障碍数（' + flags + ' > ' + need + '），' : '旗已凑满但 ') + '有 ' + wrongFlags + ' 面标错——对照回声排查后拔掉错旗'
-  return true
 }
 
 /** 推进时间（鱼群漂移；固定 1/60 子步，胜负后为空操作）。 */
