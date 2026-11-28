@@ -31,8 +31,9 @@ function createLoomWeaveGame(host: HTMLElement, options?: MiniGameMountOptions):
   /** 说明面板开关。 */
   let helpOpen = false
   let paused = false
-  /** H 提示剩余次数：自动按最优解织入下一行。 */
-  let hintsLeft = 2
+  /** H 提示剩余次数：前几关给足量（教学），后期收紧。 */
+  const hintQuota = (lv: number): number => [4, 3, 2, 2, 2][lv] ?? 2
+  let hintsLeft = hintQuota(level)
   let scoredLevel = -1
 
   const initialFit = fitCanvas(host, canvas, LOGICAL_W, LOGICAL_H)
@@ -68,7 +69,7 @@ function createLoomWeaveGame(host: HTMLElement, options?: MiniGameMountOptions):
   const startLevel = (next: number): void => {
     level = Math.min(Math.max(next, 0), LEVEL_COUNT - 1)
     state = newGame(buildLevel(level, GAME_SEED))
-    hintsLeft = 2
+    hintsLeft = hintQuota(level)
     selectedColor = 0
     offset = 0
     paused = false

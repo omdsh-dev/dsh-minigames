@@ -39,8 +39,9 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
   let helpOpen = false
   let paused = false
   let scoredLevel = -1
-  /** H 提示剩余次数：从已知解自动摆/清一个细胞。 */
-  let hintsLeft = 2
+  /** H 提示剩余次数：前几关给足量（教学），后期收紧。 */
+  const hintQuota = (lv: number): number => [4, 3, 2, 2, 2][lv] ?? 2
+  let hintsLeft = hintQuota(level)
 
   const initialFit = fitCanvas(host, canvas, LOGICAL_W, LOGICAL_H)
   if (initialFit === null) throw new Error('dsh-minigames: celllife needs a 2d canvas context')
@@ -82,7 +83,7 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
   const startLevel = (next: number): void => {
     level = Math.min(Math.max(next, 0), LEVEL_COUNT - 1)
     state = newGame(buildLevel(level, GAME_SEED))
-    hintsLeft = 2
+    hintsLeft = hintQuota(level)
     prevBoard = null
     anim = 0
     paused = false
@@ -97,7 +98,7 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
     }
     state.resets += 1
     resetPlacement(state)
-    hintsLeft = 2
+    hintsLeft = hintQuota(level)
     prevBoard = null
     anim = 0
     loop.markDirty()
