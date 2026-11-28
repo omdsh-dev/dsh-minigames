@@ -188,8 +188,8 @@ describe('sonardeduct logic', () => {
     toggleMark(s, 5, 6)
     toggleMark(s, 7, 1)
     expect(s.status).toBe('levelClear')
-    // 3 障碍 ×100 + 剩余（level1 预算 6 已用 1）×60 = 480。
-    expect(s.score).toBe(3 * 100 + 5 * 60)
+    // 3 障碍 ×100 + 剩余（level1 预算 12 已用 1）×60。
+    expect(s.score).toBe(3 * 100 + 11 * 60)
     // 误标路径的分数下限。
     const b = stateWithObstacles([[0, 0], [8, 8]])
     for (let i = 0; i < 3; i += 1) {

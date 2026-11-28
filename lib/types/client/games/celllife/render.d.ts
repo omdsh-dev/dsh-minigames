@@ -58,6 +58,8 @@ export interface SceneView {
     hudLevel: string;
     /** 已进化步数。 */
     steps: number;
+    /** H 提示剩余次数。 */
+    hintsLeft: number;
 }
 /**
  * 整帧绘制：背景 + HUD + 培养皿盘面 + 右栏目标/预览小图 + 底部提示 +

@@ -7,7 +7,7 @@
  * 渲染一帧再启动循环，帧回调 try-catch 包裹（渲染异常只记录不中断）。
  */
 import type { MiniGameDefinition, MiniGameInstance, MiniGameMountOptions } from '../types.ts'
-import { buildLevel, computeScore, evolveOnce, LEVEL_COUNT, newGame, previewNext, resetPlacement, toggleCell, type GameState } from './logic.ts'
+import { buildLevel, cellIndex, computeScore, evolveOnce, GRID, LEVEL_COUNT, newGame, previewNext, resetPlacement, toggleCell, type GameState } from './logic.ts'
 import { boardLayout, cellFromPoint, HELP_BTN, LOGICAL_H, LOGICAL_W, renderScene } from './render.ts'
 import { fitCanvas } from '../canvas-fit.ts'
 import { focusGameHost, gameHasFocus } from '../focus.ts'
@@ -39,6 +39,8 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
   let helpOpen = false
   let paused = false
   let scoredLevel = -1
+  /** H 提示剩余次数：从已知解自动摆/清一个细胞。 */
+  let hintsLeft = 2
 
   const initialFit = fitCanvas(host, canvas, LOGICAL_W, LOGICAL_H)
   if (initialFit === null) throw new Error('dsh-minigames: celllife needs a 2d canvas context')
@@ -56,6 +58,7 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
       previewBoard: previewOn ? previewNext(state) : null,
       hudLevel: (level + 1) + '/' + LEVEL_COUNT,
       steps: state.steps,
+      hintsLeft,
     }, helpOpen)
     particles.tick(ctx, dtMs)
     const overlay = overlayText()
@@ -79,6 +82,7 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
   const startLevel = (next: number): void => {
     level = Math.min(Math.max(next, 0), LEVEL_COUNT - 1)
     state = newGame(buildLevel(level, GAME_SEED))
+    hintsLeft = 2
     prevBoard = null
     anim = 0
     paused = false
@@ -93,6 +97,7 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
     }
     state.resets += 1
     resetPlacement(state)
+    hintsLeft = 2
     prevBoard = null
     anim = 0
     loop.markDirty()
@@ -156,6 +161,31 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
     if (toggleCell(state, cell)) loop.markDirty()
   }
 
+  /** H 提示：摆上已知解中缺失的一个细胞；若已多摆了错误的则先清掉一个。 */
+  const applyHint = (): void => {
+    if (hintsLeft <= 0 || paused || state.phase !== 'play' || state.steps > 0) return
+    // 优先清除解中不存在的细胞（错误摆放）。
+    const solSet = new Set(state.data.solution.map(c => cellIndex(c)))
+    for (let k = 0; k < state.board.length; k += 1) {
+      if (state.board[k] && !solSet.has(k)) {
+        toggleCell(state, { x: k % GRID, y: Math.floor(k / GRID) })
+        hintsLeft -= 1
+        loop.markDirty()
+        return
+      }
+    }
+    // 再补上解中缺失的细胞。
+    for (const c of state.data.solution) {
+      const k = cellIndex(c)
+      if (!state.board[k]) {
+        toggleCell(state, c)
+        hintsLeft -= 1
+        loop.markDirty()
+        return
+      }
+    }
+  }
+
   const onKeyDown = (event: KeyboardEvent): void => {
     if (!gameHasFocus(host)) return
     if (event.key === ' ') {
@@ -165,6 +195,9 @@ function createCellLifeGame(host: HTMLElement, options?: MiniGameMountOptions): 
       event.preventDefault()
       previewOn = !previewOn
       loop.markDirty()
+    } else if (event.key === 'h' || event.key === 'H') {
+      event.preventDefault()
+      applyHint()
     } else if (event.key === 'r' || event.key === 'R') {
       event.preventDefault()
       restartLevel()
@@ -209,7 +242,7 @@ export const celllifeGame: MiniGameDefinition = {
   description: '摆下几个细胞按下进化——五步之后要长成目标的样子，一步都不能错。',
   controls: [
     '点击中心起始区放/撤细胞，空格进化一步——完整规则点游戏内右下角「说明」',
-    'T：预览下一步 · R：重摆 · P：暂停',
+    'H：提示 · T：预览下一步 · R：重摆 · P：暂停',
   ],
   create: createCellLifeGame,
 }

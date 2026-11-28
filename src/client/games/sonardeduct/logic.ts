@@ -34,11 +34,11 @@ export interface LevelConfig {
 
 /** 关卡递进表：障碍 3→7、预算 6→3、第 3 关起加入漂移鱼群。 */
 const LEVELS: LevelConfig[] = [
-  { obstacles: 3, budget: 6, fish: 0 },
-  { obstacles: 4, budget: 5, fish: 0 },
-  { obstacles: 5, budget: 4, fish: 4 },
-  { obstacles: 6, budget: 4, fish: 6 },
-  { obstacles: 7, budget: 3, fish: 8 },
+  { obstacles: 3, budget: 12, fish: 0 },
+  { obstacles: 4, budget: 10, fish: 0 },
+  { obstacles: 5, budget: 8, fish: 4 },
+  { obstacles: 6, budget: 7, fish: 6 },
+  { obstacles: 7, budget: 6, fish: 8 },
 ]
 
 /** 对局状态：进行中 / 单关完成 / 全部通关 / 误标过多失败。 */

@@ -43,6 +43,7 @@ const HELP_LINES = [
   '· T 键开关「下一步预览」：不消耗步数地看当前盘面进化一步的样子',
   '· 一旦按下空格便进入观察阶段，不能再补摆；步数用尽未达标按 R 重摆',
   '· 细胞只能摆在起始区内；盘外视为死亡，图案不会扩散出 8x8 边界',
+  '· H 提示（2 次）：自动摆上一个解细胞，或先清掉一个错误摆放',
   '· R 重摆本关 · P 暂停 · 过关自动进入下一关，进度自动保存',
 ]
 
@@ -93,6 +94,8 @@ export interface SceneView {
   hudLevel: string
   /** 已进化步数。 */
   steps: number
+  /** H 提示剩余次数。 */
+  hintsLeft: number
 }
 
 function cellCenter(layout: Layout, x: number, y: number): { x: number; y: number } {
@@ -285,6 +288,7 @@ export function renderScene(ctx: CanvasRenderingContext2D, view: SceneView, help
   ctx.fillText(view.placing ? '阶段：摆放细胞' : '阶段：观察进化', 246, 26)
   const left = view.data.steps - view.steps
   hudPair(ctx, 704, 26, '剩余', left + ' 步', 'right', left > 0 ? THEME.text : THEME.bad)
+  hudPair(ctx, 590, 26, '提示', String(Math.max(0, view.hintsLeft)) + ' 次', 'right', view.hintsLeft > 0 ? THEME.text : THEME.textMuted)
 
   const layout = boardLayout()
   drawDish(ctx, layout)
