@@ -61,6 +61,8 @@ export interface SonarDeductState {
     status: GameStatus;
     /** 本关得分（含误标扣分；跨关累计由 index 层维护）。 */
     score: number;
+    /** 提示文案（错旗排查提示，渲染层显示；空=无）。 */
+    message: string;
     fish: Fish[];
     /** 注入的确定性随机源。 */
     rng: () => number;

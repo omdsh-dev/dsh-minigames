@@ -81,6 +81,8 @@ export interface SonarDeductState {
   status: GameStatus
   /** 本关得分（含误标扣分；跨关累计由 index 层维护）。 */
   score: number
+  /** 提示文案（错旗排查提示，渲染层显示；空=无）。 */
+  message: string
   fish: Fish[]
   /** 注入的确定性随机源。 */
   rng: () => number
@@ -242,6 +244,7 @@ export function createLevel(seed: number, level: number): SonarDeductState {
     subAcc: 0,
     status: 'playing',
     score: 0,
+    message: '',
     fish: makeFish(rng, cfg.fish),
     rng,
   }
@@ -258,6 +261,7 @@ export function fishPositions(state: SonarDeductState): { x: number; y: number }
 /** 玩家动作：在 (r,c) 发射声呐（成功返回 true）。 */
 export function ping(state: SonarDeductState, r: number, c: number): boolean {
   if (state.status !== 'playing') return false
+  state.message = ''
   if (state.budget <= 0) return false
   if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return false
   if (state.pings.some(p => p.r === r && p.c === c)) return false
@@ -288,25 +292,29 @@ export function toggleMark(state: SonarDeductState, r: number, c: number): boole
   const idx = r * SIZE + c
   if (state.marks[idx] === 1) {
     state.marks[idx] = 0
+    state.message = ''
     return true
   }
   state.marks[idx] = 1
-  if (markCount(state) !== obstacleCount(state)) return true
-  // 凑满自动判定：无错旗即全对（旗数已等于障碍数）；否则错旗即拔并扣分。
-  let allCorrect = true
+  // 旗数允许超过障碍数（推测性多标；超过必错，提示后玩家自行拔旗）。
+  const flags = markCount(state)
+  const need = obstacleCount(state)
+  if (flags < need) return true
+  // 凑满自动判定：全对过关；有错旗不拔旗、不扣分——只提示错旗数量，
+  // 玩家对照回声自行调整（原实现错旗即拔，第三面旗标错瞬间消失，
+  // 用户无法发现错在哪，表现为「标不上」）。
+  let wrongFlags = 0
   for (let i = 0; i < SIZE * SIZE; i += 1) {
     if (state.marks[i] !== 1 || state.obstacles[i] === 1) continue
-    allCorrect = false
-    state.marks[i] = 0
-    state.score -= 20
+    wrongFlags += 1
   }
-  if (allCorrect) {
+  if (wrongFlags === 0) {
     state.score += winScore(state)
     state.status = state.level >= LEVEL_COUNT ? 'allClear' : 'levelClear'
+    state.message = ''
     return true
   }
-  state.wrong += 1
-  if (state.wrong >= WRONG_LIMIT) state.status = 'gameover'
+  state.message = (flags > need ? '旗数超过障碍数（' + flags + ' > ' + need + '），' : '旗已凑满但 ') + '有 ' + wrongFlags + ' 面标错——对照回声排查后拔掉错旗'
   return true
 }
 

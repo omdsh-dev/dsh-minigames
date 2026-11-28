@@ -71,7 +71,7 @@ const HELP_LINES: string[] = [
   '非零回声就直接定位了那个障碍格——标出来即可。',
   '标记模式点格插旗 / 拔旗；E 随时切换模式。',
   '旗数凑满自动判定：错旗立即拔掉并扣分。',
-  '误标 3 次判负；声呐越省、误标越少分越高。',
+  '旗标错不扣分：凑满时提示错旗数量，对照回声排查后拔掉即可。',
   '鱼群只是干扰，回声只看静态障碍。R 重开 · P 暂停。',
 ]
 
@@ -99,7 +99,14 @@ function drawHud(ctx: CanvasRenderingContext2D, state: SonarDeductState, view: S
   const hint = view.mode === 'ping'
     ? '声呐模式：左键发波 · E 切标记 · R 重开 · P 暂停'
     : '标记模式：左键插旗 / 拔旗 · E 切声呐 · R 重开 · P 暂停'
-  ctx.fillText(hint, 12, 44)
+  // 错旗排查提示优先于模式提示（金色，玩家据此调整旗）。
+  if (state.message !== '') {
+    ctx.font = '600 12px system-ui, sans-serif'
+    ctx.fillStyle = THEME.gold
+    ctx.fillText(state.message, 12, 44)
+  } else {
+    ctx.fillText(hint, 12, 44)
+  }
 }
 
 /** 声呐格：中心换能器 + 胞内 8 向回声数字（零画 ·）。 */

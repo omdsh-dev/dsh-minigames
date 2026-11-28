@@ -156,29 +156,33 @@ describe('sonardeduct logic', () => {
     expect(ping(s, 8, 8)).toBe(false)
   })
 
-  it('标记判定：凑满全对过关，错旗即拔并扣分、误标 3 次判负', () => {
+  it('标记判定：凑满全对过关，错旗不拔不扣分只提示（第三面旗可正常标上）', () => {
     const s = stateWithObstacles([[2, 2], [5, 6], [7, 1]])
-    // 第一轮：一面错旗 + 两面对旗凑满 → 判定失败，错旗被拔、对旗保留。
+    // 一面错旗 + 两面对旗凑满 → 保持 playing、三面旗都在、只给排查提示。
     toggleMark(s, 0, 0)
     toggleMark(s, 2, 2)
     toggleMark(s, 5, 6)
     expect(s.status).toBe('playing')
-    expect(s.wrong).toBe(1)
-    expect(markCount(s)).toBe(2)
-    expect(s.marks[cellIndex(0, 0)]).toBe(0)
+    expect(markCount(s)).toBe(3)
+    expect(s.marks[cellIndex(0, 0)]).toBe(1)
     expect(s.marks[cellIndex(2, 2)]).toBe(1)
     expect(s.marks[cellIndex(5, 6)]).toBe(1)
-    expect(s.score).toBe(-20)
-    // 第二轮：第三面旗又是错旗 → 再判一次，wrong=2。
+    expect(s.message).toContain('1')
+    // 拔掉错旗 → 提示清除（旗数低于障碍数）。
+    toggleMark(s, 0, 0)
+    expect(s.message).toBe('')
+    // 多标超过障碍数 → 提示「超过」。
+    toggleMark(s, 0, 0)
     toggleMark(s, 0, 1)
-    expect(s.wrong).toBe(2)
-    expect(markCount(s)).toBe(2)
-    expect(s.marks[cellIndex(0, 1)]).toBe(0)
-    expect(s.score).toBe(-40)
-    // 第三轮误标 → 判负。
     toggleMark(s, 0, 2)
-    expect(s.wrong).toBe(WRONG_LIMIT)
-    expect(s.status).toBe('gameover')
+    expect(markCount(s)).toBe(5)
+    expect(s.message).toContain('超过')
+    // 拔到只剩三面全对旗 → 凑满自动判定过关。
+    toggleMark(s, 0, 0)
+    toggleMark(s, 0, 1)
+    toggleMark(s, 0, 2)
+    toggleMark(s, 7, 1)
+    expect(s.status).toBe('levelClear')
   })
 
   it('过关计分：障碍 ×100 + 剩余声呐 ×60 − 误标 ×20（下限 60）', () => {
@@ -190,15 +194,13 @@ describe('sonardeduct logic', () => {
     expect(s.status).toBe('levelClear')
     // 3 障碍 ×100 + 剩余（level1 预算 12 已用 1）×60。
     expect(s.score).toBe(3 * 100 + 11 * 60)
-    // 误标路径的分数下限。
+    // 错旗不再拔除扣分：错旗标上不扣分（score 不变），拔旗调整即可。
     const b = stateWithObstacles([[0, 0], [8, 8]])
-    for (let i = 0; i < 3; i += 1) {
-      toggleMark(b, 4, 4)
-      toggleMark(b, 3, 3)
-    }
-    expect(b.wrong).toBe(3)
-    expect(b.status).toBe('gameover')
-    expect(b.score).toBeLessThanOrEqual(-60)
+    toggleMark(b, 4, 4)
+    toggleMark(b, 3, 3)
+    expect(b.status).toBe('playing')
+    expect(b.score).toBe(0)
+    expect(b.marks[cellIndex(4, 4)]).toBe(1)
   })
 
   it('预算类参数实测：贪心玩家多 seed 全关可赢（含第 5 关预算 3）', () => {
