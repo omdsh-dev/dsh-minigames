@@ -251,9 +251,9 @@ describe('fireworks logic', () => {
       expect(s.y).toBeGreaterThanOrEqual(36)
       expect(s.y).toBeLessThanOrEqual(380)
     }
-    expect(describeItem(LEVELS[0]!.items[0]!)).toBe('3.0s：金色菊花 ×1 同放')
+    expect(describeItem(LEVELS[0]!.items[0]!)).toBe('3.0s 时金色菊花正在绽放')
     expect(describeItem(LEVELS[4]!.items[4]!)).toBe('柳形要最后落下')
-    expect(describeItem({ kind: 'sync', tick: 20, color: '#7aa2f7', shape: 'ring', count: 2 })).toBe('2.0s：蓝色圆环 ×2 同放')
+    expect(describeItem({ kind: 'sync', tick: 20, color: '#7aa2f7', shape: 'ring', count: 2 })).toBe('2.0s：蓝色圆环 ×2 同放（亮着也算）')
   })
 
   it('关卡递进: 5 关、位数 3到6、谱项 2到5、第 4 关起有风', () => {

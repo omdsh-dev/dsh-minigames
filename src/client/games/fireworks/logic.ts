@@ -473,7 +473,12 @@ export function describeItem(item: SpectrumItem): string {
   if (item.kind === 'sync') {
     const t = ((item.tick ?? 0) / 10).toFixed(1)
     const color = COLOR_NAMES[item.color ?? ''] ?? '任意色'
-    return t + 's：' + color + SHAPE_NAMES[item.shape] + ' ×' + (item.count ?? 1) + ' 同放'
+    // 单朵说「正在绽放」（×1 无「同放」可言——用户反馈该文案莫名其妙）；
+    // 多朵才说同放，且写明「亮着也算」帮助理解判定窗口。
+    if ((item.count ?? 1) <= 1) {
+      return t + 's 时' + color + SHAPE_NAMES[item.shape] + '正在绽放'
+    }
+    return t + 's：' + color + SHAPE_NAMES[item.shape] + ' ×' + (item.count ?? 1) + ' 同放（亮着也算）'
   }
   const shape = SHAPE_NAMES[item.shape]
   return shape + '要最后落下'
