@@ -190,13 +190,13 @@ function drawCloth(ctx: CanvasRenderingContext2D, view: SceneView, layout: Cloth
         ctx.fillStyle = 'rgba(255,255,255,0.28)'
         ctx.fillRect(x + 1, y + 1, s - 2, 3)
       } else {
-        // 已织 under：经色暗块 + 竖线残留。
-        ctx.fillStyle = 'rgba(16,16,26,0.5)'
-        ctx.fillRect(x + 1, y + 1, s - 2, s - 2)
+        // 已织 under：经色实块（该格颜色本体——对照判定与图案卡看的就是它）
+        // + 低对比深色竖纹织理。原「暗底+细条」画法让格子看起来像没织的洞，
+        // 用户误以为「图案没织全」（实际误差 0 全对）。
         ctx.fillStyle = accent(cloth[r]![c]!)
-        ctx.globalAlpha = 0.75
+        ctx.fillRect(x + 1, y + 1, s - 2, s - 2)
+        ctx.fillStyle = 'rgba(16,16,26,0.22)'
         ctx.fillRect(x + s * 0.3, y + 3, s * 0.14, s - 6)
-        ctx.globalAlpha = 1
       }
       if (cloth[r]![c] !== data.target[r]![c]) {
         // 错色格红框对照。
@@ -258,10 +258,10 @@ function drawPreview(ctx: CanvasRenderingContext2D, view: SceneView): void {
       ctx.fillStyle = 'rgba(255,255,255,0.4)'
       ctx.fillRect(x + 1, by + 1, s - 2, 3)
     } else {
-      // preview under：经色暗块 + 竖线。
-      ctx.fillStyle = 'rgba(16,16,26,0.55)'
-      ctx.fillRect(x + 1, by + 1, s - 2, s - 2)
+      // preview under：经色实块 + 低对比织理（与布面 under 一致，颜色可读）。
       ctx.fillStyle = accent(data.warp[c]!)
+      ctx.fillRect(x + 1, by + 1, s - 2, s - 2)
+      ctx.fillStyle = 'rgba(16,16,26,0.22)'
       ctx.fillRect(x + s * 0.36, by + 3, s * 0.14, s - 6)
     }
   }
